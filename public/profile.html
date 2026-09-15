@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mi perfil</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="styles-hero-v2.css">
+<link rel="stylesheet" href="styles-extra.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wordmark">evento<span>s</span></div>
+  <ul class="nav-links">
+    <li><a href="index.html">Inicio</a></li>
+    <li class="nav-item">
+      <a href="index.html#eventos">Eventos disponibles</a>
+      <div class="dropdown">
+        <a href="index.html?modality=in-person#eventos">Presenciales</a>
+        <a href="index.html?modality=virtual#eventos">Virtuales</a>
+      </div>
+    </li>
+    <li id="navMisEventos"></li>
+    <li id="navPortal"></li>
+    <li id="navPerfil"></li>
+    <li id="navAccount"></li>
+    <li class="nav-item" id="navNotif"></li>
+  </ul>
+  <div class="header-tag">Universidad de Cartagena</div>
+</header>
+
+<div class="registro-wrap">
+  <a href="index.html" class="back-link">← Volver a eventos</a>
+
+  <div id="necesitaSesion" style="display:none">
+    <div class="state-box error" style="max-width:420px">Debes iniciar sesión para ver tu perfil.</div>
+    <a href="login.html?next=profile.html" class="btn-primary" style="margin-top:16px;display:inline-flex">Iniciar sesión</a>
+  </div>
+
+  <div id="contenidoPerfil" style="display:none">
+    <div class="registro-card">
+      <h2>Mi perfil</h2>
+      <div class="meta" id="tipoCuenta" style="color:var(--text-muted);font-size:14px;margin-top:4px"></div>
+
+      <label for="pNombre">Nombre completo</label>
+      <input id="pNombre" autocomplete="name">
+
+      <label for="pCorreo">Correo</label>
+      <input id="pCorreo" type="email" autocomplete="email">
+
+      <button class="btn-primary" id="btnGuardarDatos" onclick="guardarDatos()">Guardar cambios</button>
+      <div id="estadoDatos"></div>
+    </div>
+
+    <div class="registro-card" style="margin-top:20px">
+      <h2 style="font-size:18px">Cambiar contraseña</h2>
+      <div class="meta" style="color:var(--text-muted);font-size:14px;margin-top:4px">Déjalo en blanco si no quieres cambiarla. Mínimo 6 caracteres.</div>
+
+      <label for="pActual">Contraseña actual</label>
+      <input id="pActual" type="password" autocomplete="current-password">
+
+      <label for="pNueva">Nueva contraseña</label>
+      <input id="pNueva" type="password" autocomplete="new-password" minlength="6">
+
+      <button class="btn-primary" id="btnGuardarPassword" onclick="guardarPassword()">Actualizar contraseña</button>
+      <div id="estadoPassword"></div>
+    </div>
+  </div>
+</div>
+
+<script src="auth.js"></script>
+<script>
+  const session = getSession();
+  const REGEX_CORREO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  function cargarPerfil() {
+    if (!session) {
+      document.getElementById('necesitaSesion').style.display = 'block';
+      return;
+    }
+    document.getElementById('contenidoPerfil').style.display = 'block';
+    document.getElementById('pNombre').value = session.user.name;
+    document.getElementById('pCorreo').value = session.user.email;
+    document.getElementById('tipoCuenta').textContent =
+      session.user.userType === 'organizer' ? 'Cuenta de organizador' : 'Cuenta de participante';
+  }
+
+  function mostrarError(elId, texto) {
+    document.getElementById(elId).innerHTML = `<div class="state-box error">${texto}</div>`;
+  }
+
+  async function guardarDatos() {
+    const estado = document.getElementById('estadoDatos');
+    estado.innerHTML = '';
+
+    const name = document.getElementById('pNombre').value.trim();
+    const email = document.getElementById('pCorreo').value.trim();
+
+    if (!name) return mostrarError('estadoDatos', 'El nombre no puede quedar vacío.');
+    if (!REGEX_CORREO.test(email)) return mostrarError('estadoDatos', 'Escribe un correo válido.');
+
+    const boton = document.getElementById('btnGuardarDatos');
+    boton.disabled = true;
+    boton.textContent = 'Guardando…';
+
+    try {
+      const res = await fetch('/api/users/me', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.token}` },
+        body: JSON.stringify({ name, email })
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        setSession({ token: session.token, user: data });
+        estado.innerHTML = `<div class="state-box success">Datos actualizados.</div>`;
+        renderAccountNav();
+      } else {
+        mostrarError('estadoDatos', data.message);
+      }
+    } finally {
+      boton.disabled = false;
+      boton.textContent = 'Guardar cambios';
+    }
+  }
+
+  async function guardarPassword() {
+    const estado = document.getElementById('estadoPassword');
+    estado.innerHTML = '';
+
+    const currentPassword = document.getElementById('pActual').value;
+    const newPassword = document.getElementById('pNueva').value;
+
+    if (!newPassword) return mostrarError('estadoPassword', 'Escribe la nueva contraseña.');
+    if (newPassword.length < 6) return mostrarError('estadoPassword', 'La nueva contraseña debe tener al menos 6 caracteres.');
+    if (!currentPassword) return mostrarError('estadoPassword', 'Escribe tu contraseña actual.');
+
+    const boton = document.getElementById('btnGuardarPassword');
+    boton.disabled = true;
+    boton.textContent = 'Actualizando…';
+
+    try {
+      const res = await fetch('/api/users/me', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.token}` },
+        body: JSON.stringify({ currentPassword, newPassword })
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        estado.innerHTML = `<div class="state-box success">Contraseña actualizada.</div>`;
+        document.getElementById('pActual').value = '';
+        document.getElementById('pNueva').value = '';
+      } else {
+        mostrarError('estadoPassword', data.message);
+      }
+    } finally {
+      boton.disabled = false;
+      boton.textContent = 'Actualizar contraseña';
+    }
+  }
+
+  cargarPerfil();
+</script>
+</body>
+</html>

@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Eventos — Universidad de Cartagena</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="styles-hero-v2.css">
+<link rel="stylesheet" href="styles-portal.css">
+<link rel="stylesheet" href="styles-compare.css">
+<link rel="stylesheet" href="styles-extra.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wordmark">evento<span>s</span></div>
+  <ul class="nav-links">
+    <li><a href="index.html" class="active">Inicio</a></li>
+    <li class="nav-item">
+      <a href="index.html#eventos">Eventos disponibles</a>
+      <div class="dropdown">
+        <a href="#" data-modality="in-person">Presenciales</a>
+        <a href="#" data-modality="virtual">Virtuales</a>
+      </div>
+    </li>
+    <li id="navMisEventos"></li>
+    <li id="navPortal"></li>
+    <li id="navPerfil"></li>
+    <li id="navAccount"></li>
+    <li class="nav-item" id="navNotif"></li>
+  </ul>
+  <div class="header-tag">Universidad de Cartagena</div>
+</header>
+
+<section class="hero wrap">
+  <div>
+    <div class="eyebrow" style="color:var(--text-muted);font-size:13px;margin-bottom:10px">Empecemos con tu próximo evento</div>
+    <h1>Inscríbete a los eventos de tu universidad</h1>
+    <p>Consulta los cupos disponibles en tiempo real y recibe la confirmación de tu registro al instante. Participa en los eventos presenciales y virtuales que tenemos disponibles.</p>
+    <div style="display:flex;gap:14px;flex-wrap:wrap">
+      <a href="#eventos" class="btn-primary">Ver eventos disponibles</a>
+      <a href="#" id="btnCrearEvento" class="btn-secondary" style="display:none">+ Crear evento</a>
+    </div>
+  </div>
+
+  <div class="hero-visual">
+    <svg viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Ilustración de un evento con una persona presentando en un escenario">
+      <polygon points="200,10 90,270 310,270" fill="white" opacity="0.06"/>
+      <ellipse cx="200" cy="262" rx="140" ry="16" fill="white" opacity="0.14"/>
+      <circle cx="90" cy="60" r="4" fill="white" opacity="0.35"/>
+      <circle cx="320" cy="90" r="3" fill="white" opacity="0.3"/>
+      <circle cx="60" cy="150" r="3" fill="white" opacity="0.25"/>
+      <circle cx="340" cy="180" r="4" fill="white" opacity="0.3"/>
+      <path d="M170 250 C170 190 172 165 200 160 C228 165 230 190 230 250 Z" fill="white" opacity="0.9"/>
+      <circle cx="200" cy="128" r="24" fill="white" opacity="0.95"/>
+      <circle cx="130" cy="240" r="7" fill="white" opacity="0.35"/>
+      <circle cx="150" cy="248" r="7" fill="white" opacity="0.3"/>
+      <circle cx="250" cy="248" r="7" fill="white" opacity="0.3"/>
+      <circle cx="270" cy="240" r="7" fill="white" opacity="0.35"/>
+    </svg>
+
+    <div class="preview-card" id="previewCard" style="display:none">
+      <div class="eyebrow">Próximo evento</div>
+      <h3 id="previewNombre"></h3>
+      <div class="meta" id="previewMeta"></div>
+      <div class="cupo-bar-track"><div class="cupo-bar-fill" id="previewBarra"></div></div>
+      <div class="cupo-label">
+        <span id="previewCupoTexto"></span>
+        <span>Cupo máximo: <span id="previewCupoMax"></span></span>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="wrap compare-section">
+  <h2 class="section-title">¿Por qué centralizar tus eventos?</h2>
+  <p class="section-sub">Así se organizan hoy la mayoría de eventos universitarios, y así se ven con esta plataforma.</p>
+  <div class="compare-grid">
+    <div class="compare-card before">
+      <h3>Sin plataforma</h3>
+      <ul class="compare-list">
+        <li><span class="compare-icon">✕</span> Inscripciones dispersas en WhatsApp, formularios sueltos y hojas de cálculo</li>
+        <li><span class="compare-icon">✕</span> Sin control real de cuántos cupos quedan disponibles</li>
+        <li><span class="compare-icon">✕</span> El participante no sabe si su registro realmente quedó confirmado</li>
+        <li><span class="compare-icon">✕</span> Reportes de asistencia armados a mano, con datos desactualizados</li>
+      </ul>
+    </div>
+    <div class="compare-card after">
+      <h3>Con esta plataforma</h3>
+      <ul class="compare-list">
+        <li><span class="compare-icon">✓</span> Registro centralizado, un solo lugar para todos los eventos</li>
+        <li><span class="compare-icon">✓</span> Cupo disponible actualizado en tiempo real</li>
+        <li><span class="compare-icon">✓</span> Confirmación visual inmediata al inscribirse</li>
+        <li><span class="compare-icon">✓</span> Reporte de asistencia generado con un clic</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<main class="wrap" id="eventos">
+  <div class="section-header-row">
+    <div>
+      <h2 class="section-title" id="tituloSeccion">Eventos disponibles</h2>
+      <p class="section-sub" id="subtituloSeccion">Elige un evento y confirma tu asistencia en menos de un minuto.</p>
+    </div>
+  </div>
+  <div class="events-grid" id="grid"></div>
+</main>
+
+<!-- Modal: crear evento (solo organizador) -->
+<div class="modal-backdrop" id="modalCrear">
+  <div class="modal-card">
+    <button class="modal-close" id="cerrarModal" aria-label="Cerrar">×</button>
+    <h3>Crear evento</h3>
+    <div class="meta" style="color:var(--text-muted);font-size:14px;margin-top:4px">Se publicará de inmediato en la lista de eventos disponibles.</div>
+
+    <label for="ceNombre">Nombre del evento</label>
+    <input id="ceNombre" placeholder="Semana de innovación IHC">
+
+    <label for="ceDescripcion">Descripción</label>
+    <textarea id="ceDescripcion" placeholder="Breve descripción para los participantes"></textarea>
+
+    <label for="ceFecha">Fecha</label>
+    <input id="ceFecha" type="date">
+
+    <label for="ceLugar">Lugar</label>
+    <input id="ceLugar" placeholder="Auditorio central">
+
+    <label for="ceModalidad">Modalidad</label>
+    <select id="ceModalidad">
+      <option value="in-person">Presencial</option>
+      <option value="virtual">Virtual</option>
+    </select>
+
+    <label for="ceCupo">Cupo máximo</label>
+    <input id="ceCupo" type="number" min="1" placeholder="50">
+
+    <button class="btn-primary" style="width:100%;justify-content:center;margin-top:22px" onclick="crearEvento()">Publicar evento</button>
+    <div id="estadoModal"></div>
+  </div>
+</div>
+
+<script src="auth.js"></script>
+<script>
+  const session = getSession();
+  let eventosCache = [];
+
+  function etiquetaModalidad(m) {
+    return m === 'virtual' ? 'Virtual' : 'Presencial';
+  }
+
+  function pintarGrid(events) {
+    const grid = document.getElementById('grid');
+
+    if (events.length === 0) {
+      grid.innerHTML = `<div class="empty-state">No hay eventos que coincidan con este filtro por ahora.</div>`;
+      return;
+    }
+
+    grid.innerHTML = events.map(ev => `
+      <div class="event-card">
+        <h3>${ev.name}</h3>
+        <div class="meta">${new Date(ev.date).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })} · ${ev.location} · ${etiquetaModalidad(ev.modality)}</div>
+        <div class="cupo-bar-track"><div class="cupo-bar-fill" style="width:${100 - (ev.availableSpots / ev.maxCapacity * 100)}%"></div></div>
+        <div class="cupo-label"><span>${ev.availableSpots} cupos libres</span><span>${ev.maxCapacity} en total</span></div>
+        ${ev.availableSpots > 0
+          ? `<a class="btn-primary" href="register.html?event=${ev._id}">Registrarme</a>`
+          : `<button class="btn-primary" disabled>Cupo lleno</button>`}
+      </div>
+    `).join('');
+  }
+
+  function aplicarFiltro(modalidad) {
+    const params = new URLSearchParams(location.search);
+    if (modalidad) {
+      params.set('modality', modalidad);
+      document.getElementById('subtituloSeccion').textContent =
+        `Mostrando eventos ${etiquetaModalidad(modalidad).toLowerCase()}s. `;
+    } else {
+      params.delete('modality');
+      document.getElementById('subtituloSeccion').textContent = 'Elige un evento y confirma tu asistencia en menos de un minuto.';
+    }
+    history.replaceState(null, '', `index.html${params.toString() ? '?' + params.toString() : ''}#eventos`);
+
+    const filtrados = modalidad ? eventosCache.filter(e => e.modality === modalidad) : eventosCache;
+    pintarGrid(filtrados);
+  }
+
+  async function cargarEventos() {
+    const res = await fetch('/api/events');
+    eventosCache = await res.json();
+
+    if (eventosCache.length === 0) {
+      document.getElementById('grid').innerHTML = `<div class="empty-state">Todavía no hay eventos publicados.</div>`;
+    } else {
+      const proximo = [...eventosCache].sort((a, b) => new Date(a.date) - new Date(b.date))[0];
+      const card = document.getElementById('previewCard');
+      card.style.display = 'block';
+      document.getElementById('previewNombre').textContent = proximo.name;
+      document.getElementById('previewMeta').textContent =
+        `${new Date(proximo.date).toLocaleDateString('es-CO', { day: 'numeric', month: 'long' })} · ${proximo.location}`;
+      document.getElementById('previewBarra').style.width = `${100 - (proximo.availableSpots / proximo.maxCapacity * 100)}%`;
+      document.getElementById('previewCupoTexto').textContent = `${proximo.availableSpots} cupos disponibles`;
+      document.getElementById('previewCupoMax').textContent = proximo.maxCapacity;
+    }
+
+    const modalidadInicial = new URLSearchParams(location.search).get('modality');
+    aplicarFiltro(modalidadInicial);
+  }
+
+  document.querySelectorAll('.dropdown a[data-modality]').forEach(a => {
+    a.addEventListener('click', (e) => {
+      e.preventDefault();
+      aplicarFiltro(a.dataset.modality);
+      document.getElementById('eventos').scrollIntoView({ behavior: 'smooth' });
+    });
+  });
+
+  // Botón "Crear evento": solo visible para organizadores logueados
+  if (session && session.user.userType === 'organizer') {
+    const boton = document.getElementById('btnCrearEvento');
+    boton.style.display = 'inline-flex';
+    boton.addEventListener('click', (e) => {
+      e.preventDefault();
+      document.getElementById('modalCrear').classList.add('open');
+    });
+  }
+
+  document.getElementById('cerrarModal').addEventListener('click', () => {
+    document.getElementById('modalCrear').classList.remove('open');
+  });
+
+  async function crearEvento() {
+    const body = {
+      name: document.getElementById('ceNombre').value,
+      description: document.getElementById('ceDescripcion').value,
+      date: document.getElementById('ceFecha').value,
+      location: document.getElementById('ceLugar').value,
+      modality: document.getElementById('ceModalidad').value,
+      maxCapacity: Number(document.getElementById('ceCupo').value)
+    };
+
+    const res = await fetch('/api/events', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.token}` },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+
+    if (res.ok) {
+      document.getElementById('modalCrear').classList.remove('open');
+      cargarEventos();
+    } else {
+      document.getElementById('estadoModal').innerHTML = `<div class="state-box error">${data.message}</div>`;
+    }
+  }
+
+  cargarEventos();
+</script>
+</body>
+</html>

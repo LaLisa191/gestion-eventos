@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mis eventos</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="styles-hero-v2.css">
+<link rel="stylesheet" href="styles-portal.css">
+<link rel="stylesheet" href="styles-extra.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wordmark">evento<span>s</span></div>
+  <ul class="nav-links">
+    <li><a href="index.html">Inicio</a></li>
+    <li class="nav-item">
+      <a href="index.html#eventos">Eventos disponibles</a>
+      <div class="dropdown">
+        <a href="index.html?modality=in-person#eventos">Presenciales</a>
+        <a href="index.html?modality=virtual#eventos">Virtuales</a>
+      </div>
+    </li>
+    <li id="navMisEventos"></li>
+    <li id="navPortal"></li>
+    <li id="navPerfil"></li>
+    <li id="navAccount"></li>
+    <li class="nav-item" id="navNotif"></li>
+  </ul>
+  <div class="header-tag">Universidad de Cartagena</div>
+</header>
+
+<main class="wrap" style="padding-top:48px;padding-bottom:80px">
+  <h2 class="section-title">Mis eventos</h2>
+  <p class="section-sub" id="subtitulo">Los eventos a los que te has inscrito.</p>
+
+  <div id="necesitaSesion" style="display:none">
+    <div class="state-box error" style="max-width:420px">Debes iniciar sesión para ver tus eventos.</div>
+    <a href="login.html?next=my-events.html" class="btn-primary" style="margin-top:16px;display:inline-flex">Iniciar sesión</a>
+  </div>
+
+  <div class="events-grid" id="grid"></div>
+</main>
+
+<script src="auth.js"></script>
+<script>
+  const session = getSession();
+
+  function etiquetaModalidad(m) {
+    return m === 'virtual' ? 'Virtual' : 'Presencial';
+  }
+
+  function etiquetaEstado(estado) {
+    return estado === 'cancelled'
+      ? '<span class="state-box error" style="display:inline-block;padding:4px 10px;font-size:12px;margin:0">Cancelado</span>'
+      : '<span class="state-box success" style="display:inline-block;padding:4px 10px;font-size:12px;margin:0">Confirmado</span>';
+  }
+
+  async function cargarMisEventos() {
+    if (!session) {
+      document.getElementById('necesitaSesion').style.display = 'block';
+      return;
+    }
+
+    const res = await fetch('/api/users/me/registrations', {
+      headers: { 'Authorization': `Bearer ${session.token}` }
+    });
+    const registrations = await res.json();
+    const grid = document.getElementById('grid');
+
+    const conEvento = registrations.filter(r => r.eventId);
+
+    if (conEvento.length === 0) {
+      grid.innerHTML = `<div class="empty-state">
+        Aún no te has registrado a ningún evento.
+        <a href="index.html#eventos" class="btn-secondary" style="margin-top:14px;display:inline-flex">Ver eventos disponibles</a>
+      </div>`;
+      return;
+    }
+
+    grid.innerHTML = conEvento.map(r => `
+      <div class="event-card">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+          <h3>${r.eventId.name}</h3>
+          ${etiquetaEstado(r.status)}
+        </div>
+        <div class="meta">${new Date(r.eventId.date).toLocaleDateString('es-CO', { day: 'numeric', month: 'long' })} · ${r.eventId.location} · ${etiquetaModalidad(r.eventId.modality)}</div>
+        ${r.status === 'confirmed'
+          ? `<button class="btn-secondary" onclick="cancelar('${r.eventId._id}', '${r._id}', this)">Cancelar registro</button>`
+          : ''}
+      </div>
+    `).join('');
+  }
+
+  async function cancelar(eventId, registrationId, boton) {
+    boton.disabled = true;
+    boton.textContent = 'Cancelando…';
+    const res = await fetch(`/api/events/${eventId}/registrations/${registrationId}/cancel`, {
+      method: 'PATCH',
+      headers: { 'Authorization': `Bearer ${session.token}` }
+    });
+    if (res.ok) {
+      cargarMisEventos();
+    } else {
+      const data = await res.json();
+      alert(data.message);
+      boton.disabled = false;
+      boton.textContent = 'Cancelar registro';
+    }
+  }
+
+  cargarMisEventos();
+</script>
+</body>
+</html>

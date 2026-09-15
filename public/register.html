@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Registro — evento</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="styles-hero-v2.css">
+<link rel="stylesheet" href="styles-portal.css">
+<link rel="stylesheet" href="styles-extra.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wordmark">evento<span>s</span></div>
+  <ul class="nav-links">
+    <li><a href="index.html">Inicio</a></li>
+    <li class="nav-item">
+      <a href="index.html#eventos">Eventos disponibles</a>
+      <div class="dropdown">
+        <a href="index.html?modality=in-person#eventos">Presenciales</a>
+        <a href="index.html?modality=virtual#eventos">Virtuales</a>
+      </div>
+    </li>
+    <li id="navMisEventos"></li>
+    <li id="navPortal"></li>
+    <li id="navAccount"></li>
+    <li class="nav-item" id="navNotif"></li>
+  </ul>
+  <div class="header-tag">Universidad de Cartagena</div>
+</header>
+
+<div class="registro-wrap">
+  <a href="index.html" class="back-link">← Volver a eventos</a>
+
+  <div class="registro-card">
+    <div class="eyebrow" style="color:var(--text-muted);font-size:13px;margin-bottom:6px">Registro de participante</div>
+    <h2 id="nombreEvento">Cargando…</h2>
+    <div class="meta" id="metaEvento" style="color:var(--text-muted);font-size:14px;margin-top:6px"></div>
+
+    <div class="cupo-bar-track" style="margin-top:18px"><div class="cupo-bar-fill" id="barra"></div></div>
+    <div class="cupo-label"><span id="cupoTexto"></span><span id="cupoMax"></span></div>
+
+    <div id="necesitaSesion" style="display:none;margin-top:22px">
+      <div class="state-box error">Debes iniciar sesión para registrarte a este evento.</div>
+      <a class="btn-primary" style="width:100%;justify-content:center;margin-top:14px" id="linkLogin">Iniciar sesión</a>
+    </div>
+
+    <div id="formulario" style="display:none">
+      <label>Te registrarás como</label>
+      <div class="readonly-field" id="usuarioActual" style="margin-top:6px"></div>
+      <button class="btn-primary" onclick="registrar()">Confirmar mi registro</button>
+    </div>
+
+    <div id="estado"></div>
+  </div>
+</div>
+
+<script src="auth.js"></script>
+<script>
+  const params = new URLSearchParams(location.search);
+  const eventId = params.get('event');
+  const session = getSession();
+
+  async function cargarEvento() {
+    if (!eventId) {
+      document.getElementById('nombreEvento').textContent = 'No se indicó ningún evento';
+      return;
+    }
+
+    const res = await fetch(`/api/events/${eventId}`);
+    if (!res.ok) {
+      document.getElementById('nombreEvento').textContent = 'Evento no encontrado';
+      return;
+    }
+    const ev = await res.json();
+    document.getElementById('nombreEvento').textContent = ev.name;
+    document.getElementById('metaEvento').textContent =
+      `${new Date(ev.date).toLocaleDateString('es-CO', { day: 'numeric', month: 'long' })} · ${ev.location}`;
+    document.getElementById('barra').style.width = `${100 - (ev.availableSpots / ev.maxCapacity * 100)}%`;
+    document.getElementById('cupoTexto').textContent = `${ev.availableSpots} cupos disponibles`;
+    document.getElementById('cupoMax').textContent = `${ev.maxCapacity} en total`;
+
+    if (ev.availableSpots <= 0) {
+      mostrarEstado('error', 'Este evento ya no tiene cupos disponibles.');
+      return;
+    }
+
+    if (!session) {
+      document.getElementById('necesitaSesion').style.display = 'block';
+      document.getElementById('linkLogin').href = `login.html?next=register.html?event=${eventId}`;
+    } else {
+      document.getElementById('formulario').style.display = 'block';
+      document.getElementById('usuarioActual').textContent = session.user.email;
+    }
+  }
+
+  function mostrarEstado(tipo, texto) {
+    document.getElementById('estado').innerHTML = `<div class="state-box ${tipo}">${texto}</div>`;
+  }
+
+  async function registrar() {
+    const res = await fetch(`/api/events/${eventId}/registrations`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.token}` },
+      body: JSON.stringify({})
+    });
+    const data = await res.json();
+
+    if (res.ok) {
+      document.getElementById('formulario').style.display = 'none';
+      mostrarEstado('success', '✓ Registro confirmado. Te esperamos en el evento.');
+      cargarEvento();
+    } else {
+      mostrarEstado('error', data.message);
+    }
+  }
+
+  cargarEvento();
+</script>
+</body>
+</html>

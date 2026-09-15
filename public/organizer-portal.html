@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mi portal — organizador</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="styles-hero-v2.css">
+<link rel="stylesheet" href="styles-portal.css">
+<link rel="stylesheet" href="styles-extra.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wordmark">evento<span>s</span></div>
+  <ul class="nav-links">
+    <li><a href="index.html">Inicio</a></li>
+    <li class="nav-item">
+      <a href="index.html#eventos">Eventos disponibles</a>
+      <div class="dropdown">
+        <a href="index.html?modality=in-person#eventos">Presenciales</a>
+        <a href="index.html?modality=virtual#eventos">Virtuales</a>
+      </div>
+    </li>
+    <li id="navMisEventos"></li>
+    <li id="navPortal"></li>
+    <li id="navPerfil"></li>
+    <li id="navAccount"></li>
+    
+  </ul>
+  <div class="header-tag">Universidad de Cartagena</div>
+</header>
+
+<main class="wrap" style="padding-top:48px;padding-bottom:80px">
+  <div class="section-header-row">
+    <div>
+      <h2 class="section-title">Mi portal</h2>
+      <p class="section-sub">Los eventos que has creado, con sus inscritos y reportes.</p>
+    </div>
+    <a href="#" id="btnNuevoEvento" class="btn-primary" style="display:none">+ Nuevo evento</a>
+  </div>
+
+  <div id="necesitaSesion" style="display:none">
+    <div class="state-box error" style="max-width:460px">Debes iniciar sesión como organizador para ver tu portal.</div>
+    <a href="login.html?next=organizer-portal.html" class="btn-primary" style="margin-top:16px;display:inline-flex">Iniciar sesión</a>
+  </div>
+
+  <div class="events-grid" id="grid"></div>
+</main>
+
+<!-- Modal: crear/editar evento -->
+<div class="modal-backdrop" id="modalEvento">
+  <div class="modal-card">
+    <button class="modal-close" id="cerrarModalEvento" aria-label="Cerrar">×</button>
+    <h3 id="tituloModalEvento">Nuevo evento</h3>
+
+    <label for="ceNombre">Nombre del evento</label>
+    <input id="ceNombre">
+
+    <label for="ceDescripcion">Descripción</label>
+    <textarea id="ceDescripcion"></textarea>
+
+    <label for="ceFecha">Fecha</label>
+    <input id="ceFecha" type="date">
+
+    <label for="ceLugar">Lugar</label>
+    <input id="ceLugar">
+
+    <label for="ceModalidad">Modalidad</label>
+    <select id="ceModalidad">
+      <option value="in-person">Presencial</option>
+      <option value="virtual">Virtual</option>
+    </select>
+
+    <label for="ceCupo">Cupo máximo</label>
+    <input id="ceCupo" type="number" min="1">
+
+    <button class="btn-primary" style="width:100%;justify-content:center;margin-top:22px" onclick="guardarEvento()">Guardar</button>
+    <div id="estadoModalEvento"></div>
+  </div>
+</div>
+
+<!-- Modal: reporte de asistencia -->
+<div class="modal-backdrop" id="modalReporte">
+  <div class="modal-card" style="max-width:560px">
+    <button class="modal-close" id="cerrarModalReporte" aria-label="Cerrar">×</button>
+    <h3 id="tituloModalReporte">Reporte de asistencia</h3>
+    <div class="meta" id="resumenReporte" style="color:var(--text-muted);font-size:14px;margin-top:6px"></div>
+    <table class="data-table" id="tablaReporte">
+      <thead><tr><th>Participante</th><th>Correo</th><th>Fecha de registro</th></tr></thead>
+      <tbody id="filasReporte"></tbody>
+    </table>
+  </div>
+</div>
+
+<script src="auth.js"></script>
+<script>
+  const session = getSession();
+  let eventoEnEdicion = null;
+  let eventosCache = {};
+
+  function etiquetaModalidad(m) { return m === 'virtual' ? 'Virtual' : 'Presencial'; }
+  function etiquetaEstado(estado) {
+    const nombres = { active: 'Activo', cancelled: 'Cancelado', finished: 'Finalizado' };
+    return nombres[estado] || estado;
+  }
+
+  async function cargarMisEventos() {
+    if (!session || session.user.userType !== 'organizer') {
+      document.getElementById('necesitaSesion').style.display = 'block';
+      return;
+    }
+
+    document.getElementById('btnNuevoEvento').style.display = 'inline-flex';
+
+    const res = await fetch('/api/events');
+    const events = await res.json();
+    const mios = events.filter(ev => ev.organizerId === session.user.id);
+    const grid = document.getElementById('grid');
+
+    eventosCache = {};
+    mios.forEach(ev => { eventosCache[ev._id] = ev; });
+
+    if (mios.length === 0) {
+      grid.innerHTML = `<div class="empty-state">Todavía no has creado ningún evento.</div>`;
+      return;
+    }
+
+    grid.innerHTML = mios.map(ev => `
+      <div class="event-card">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+          <h3>${ev.name}</h3>
+          <span class="status-pill">${etiquetaEstado(ev.status)}</span>
+        </div>
+        <div class="meta">${new Date(ev.date).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })} · ${ev.location} · ${etiquetaModalidad(ev.modality)}</div>
+        <div class="cupo-bar-track"><div class="cupo-bar-fill" style="width:${100 - (ev.availableSpots / ev.maxCapacity * 100)}%"></div></div>
+        <div class="cupo-label"><span>${ev.availableSpots} cupos libres</span><span>${ev.maxCapacity} en total</span></div>
+        <div class="card-actions">
+          <button class="btn-secondary" onclick="abrirEdicion('${ev._id}')">Editar</button>
+          <button class="btn-danger" onclick="eliminarEvento('${ev._id}')">Eliminar</button>
+          <button class="btn-primary" onclick="verReporte('${ev._id}')">Reporte</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // ---------- crear / editar ----------
+  function abrirCreacion() {
+    eventoEnEdicion = null;
+    document.getElementById('tituloModalEvento').textContent = 'Nuevo evento';
+    document.getElementById('ceNombre').value = '';
+    document.getElementById('ceDescripcion').value = '';
+    document.getElementById('ceFecha').value = '';
+    document.getElementById('ceLugar').value = '';
+    document.getElementById('ceModalidad').value = 'in-person';
+    document.getElementById('ceCupo').value = '';
+    document.getElementById('modalEvento').classList.add('open');
+  }
+
+  function abrirEdicion(id) {
+    const ev = eventosCache[id];
+    eventoEnEdicion = ev._id;
+    document.getElementById('tituloModalEvento').textContent = 'Editar evento';
+    document.getElementById('ceNombre').value = ev.name;
+    document.getElementById('ceDescripcion').value = ev.description || '';
+    document.getElementById('ceFecha').value = ev.date ? ev.date.substring(0, 10) : '';
+    document.getElementById('ceLugar').value = ev.location;
+    document.getElementById('ceModalidad').value = ev.modality || 'in-person';
+    document.getElementById('ceCupo').value = ev.maxCapacity;
+    document.getElementById('modalEvento').classList.add('open');
+  }
+
+  document.getElementById('btnNuevoEvento').addEventListener('click', (e) => {
+    e.preventDefault();
+    abrirCreacion();
+  });
+
+  document.getElementById('cerrarModalEvento').addEventListener('click', () => {
+    document.getElementById('modalEvento').classList.remove('open');
+  });
+
+  async function guardarEvento() {
+    const body = {
+      name: document.getElementById('ceNombre').value,
+      description: document.getElementById('ceDescripcion').value,
+      date: document.getElementById('ceFecha').value,
+      location: document.getElementById('ceLugar').value,
+      modality: document.getElementById('ceModalidad').value,
+      maxCapacity: Number(document.getElementById('ceCupo').value)
+    };
+
+    const url = eventoEnEdicion ? `/api/events/${eventoEnEdicion}` : '/api/events';
+    const method = eventoEnEdicion ? 'PUT' : 'POST';
+
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.token}` },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+
+    if (res.ok) {
+      document.getElementById('modalEvento').classList.remove('open');
+      cargarMisEventos();
+    } else {
+      document.getElementById('estadoModalEvento').innerHTML = `<div class="state-box error">${data.message}</div>`;
+    }
+  }
+
+  // ---------- eliminar ----------
+  async function eliminarEvento(id) {
+    if (!confirm('¿Seguro que quieres eliminar este evento? Esta acción no se puede deshacer.')) return;
+    const res = await fetch(`/api/events/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${session.token}` }
+    });
+    if (res.ok) {
+      cargarMisEventos();
+    } else {
+      const data = await res.json();
+      alert(data.message);
+    }
+  }
+
+  // ---------- reporte ----------
+  async function verReporte(id) {
+    const res = await fetch(`/api/events/${id}/reports`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${session.token}` }
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.message);
+      return;
+    }
+
+    const nombre = eventosCache[id] ? eventosCache[id].name : '';
+    document.getElementById('tituloModalReporte').textContent = `Reporte — ${nombre}`;
+    document.getElementById('resumenReporte').textContent =
+      `${data.data.totalRegistered} inscritos de ${data.data.maxCapacity} cupos · generado el ${new Date(data.generatedAt).toLocaleString('es-CO')}`;
+
+    document.getElementById('filasReporte').innerHTML = data.data.participants.map(p => `
+      <tr><td>${p.name}</td><td>${p.email}</td><td>${new Date(p.date).toLocaleDateString('es-CO')}</td></tr>
+    `).join('') || '<tr><td colspan="3">Todavía no hay participantes inscritos.</td></tr>';
+
+    document.getElementById('modalReporte').classList.add('open');
+  }
+
+  document.getElementById('cerrarModalReporte').addEventListener('click', () => {
+    document.getElementById('modalReporte').classList.remove('open');
+  });
+
+  cargarMisEventos();
+</script>
+</body>
+</html>
