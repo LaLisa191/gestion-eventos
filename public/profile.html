@@ -74,7 +74,7 @@
 <script src="auth.js"></script>
 <script>
   const session = getSession();
-  const REGEX_CORREO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const REGEX_CORREO = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/;
 
   function cargarPerfil() {
     if (!session) {

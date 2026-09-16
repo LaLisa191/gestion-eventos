@@ -64,7 +64,7 @@
 
     <div class="preview-card" id="previewCard" style="display:none">
       <div class="eyebrow">Próximo evento</div>
-      <h3 id="previewNombre"></h3>
+      <h3 id="previewNombre">Cargando evento...</h3>
       <div class="meta" id="previewMeta"></div>
       <div class="cupo-bar-track"><div class="cupo-bar-fill" id="previewBarra"></div></div>
       <div class="cupo-label">
@@ -106,7 +106,8 @@
       <h2 class="section-title" id="tituloSeccion">Eventos disponibles</h2>
       <p class="section-sub" id="subtituloSeccion">Elige un evento y confirma tu asistencia en menos de un minuto.</p>
     </div>
-    <input type="search" id="buscadorEventos" class="search-input" placeholder="Buscar evento por nombre…">
+    <label for="buscadorEventos" class="sr-only">Buscar evento por nombre</label>
+<input type="search" id="buscadorEventos" class="search-input" placeholder="Buscar evento por nombre…">
 </div>
   <div class="events-grid" id="grid"></div>
   <div id="paginacion" style="display:flex;justify-content:center;align-items:center;gap:14px;margin-top:24px"></div>
@@ -279,7 +280,7 @@ function renderPaginacion(totalPaginas) {
     });
     if (res.ok) {
       const favs = await res.json();
-      favoritosIds = new Set(favs.filter(f => f).map(f => f._id));
+      favoritosIds = new Set(favs.filter(Boolean).map(f => f._id));
     }
   }
 

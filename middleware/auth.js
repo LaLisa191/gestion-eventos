@@ -3,7 +3,7 @@ const User = require('../models/User');
 
 async function verifyToken(req, res, next) {
   const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  if (!authHeader?.startsWith('Bearer ')) {
     return res.status(401).json({ message: 'No autenticado' });
   }
   const token = authHeader.split(' ')[1];
@@ -14,6 +14,9 @@ async function verifyToken(req, res, next) {
     req.user = user;
     next();
   } catch (err) {
+    // Token inválido, expirado o mal formado: se rechaza la petición.
+    // Se deja registro para poder detectar patrones de tokens sospechosos.
+    console.warn('Token inválido o expirado:', err.message);
     return res.status(401).json({ message: 'Token inválido o expirado' });
   }
 }

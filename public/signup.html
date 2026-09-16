@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+  <script>
+   if (localStorage.getItem('session')) location.href = 'index.html';
+  </script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Crear cuenta — eventos</title>
@@ -50,11 +53,12 @@
     <label for="password">Contraseña</label>
     <input id="password" type="password" placeholder="••••••••">
 
-    <label>Tipo de cuenta</label>
-    <div class="radio-group">
-      <label><input type="radio" name="userType" value="participant" checked> Participante</label>
-      <label><input type="radio" name="userType" value="organizer"> Organizador</label>
-    </div>
+    <label for="tipoParticipante">Tipo de cuenta</label>
+<div class="radio-group">
+    <label><input type="radio" id="tipoParticipante" name="userType" value="participant" checked> Participante</label>
+    <label><input type="radio" id="tipoOrganizador" name="userType" value="organizer"> Organizador</label>
+</div>
+
 
     <button class="btn-primary" onclick="signup()">Crear cuenta</button>
 
