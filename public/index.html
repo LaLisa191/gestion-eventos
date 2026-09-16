@@ -11,6 +11,7 @@
 <link rel="stylesheet" href="styles-extra.css">
 <link rel="stylesheet" href="styles-nav.css">
 <link rel="stylesheet" href="styles-favoritos.css">
+<link rel="stylesheet" href="styles-footer.css">
 </head>
 <body>
 
@@ -108,6 +109,7 @@
     <input type="search" id="buscadorEventos" class="search-input" placeholder="Buscar evento por nombre…">
 </div>
   <div class="events-grid" id="grid"></div>
+  <div id="paginacion" style="display:flex;justify-content:center;align-items:center;gap:14px;margin-top:24px"></div>
 </main>
 
 <!-- Modal: crear evento (solo organizador) -->
@@ -180,16 +182,47 @@
     `).join('');
   }
 
-  function filtrarYPintar() {
-    let filtrados = eventosCache;
-    if (modalidadActual) filtrados = filtrados.filter(e => e.modality === modalidadActual);
-    if (terminoBusqueda) {
-      const t = terminoBusqueda.toLowerCase();
-      filtrados = filtrados.filter(e => e.name.toLowerCase().includes(t));
-    }
-    if (soloFavoritos) filtrados = filtrados.filter(e => favoritosIds.has(e._id));
-    pintarGrid(filtrados);
+  let paginaActual = 1;
+const eventosPorPagina = 6;
+
+function filtrarYPintar() {
+  let filtrados = eventosCache;
+  if (modalidadActual) filtrados = filtrados.filter(e => e.modality === modalidadActual);
+  if (terminoBusqueda) {
+    const t = terminoBusqueda.toLowerCase();
+    filtrados = filtrados.filter(e => e.name.toLowerCase().includes(t));
   }
+  if (soloFavoritos) filtrados = filtrados.filter(e => favoritosIds.has(e._id));
+
+  const totalPaginas = Math.max(1, Math.ceil(filtrados.length / eventosPorPagina));
+  if (paginaActual > totalPaginas) paginaActual = totalPaginas;
+
+  const inicio = (paginaActual - 1) * eventosPorPagina;
+  pintarGrid(filtrados.slice(inicio, inicio + eventosPorPagina));
+  renderPaginacion(totalPaginas);
+}
+
+function renderPaginacion(totalPaginas) {
+  const el = document.getElementById('paginacion');
+  if (totalPaginas <= 1) { el.innerHTML = ''; return; }
+
+  el.innerHTML = `
+    <button class="btn-secondary" id="btnPagAnterior" ${paginaActual === 1 ? 'disabled' : ''}>← Anterior</button>
+    <span style="color:var(--text-muted);font-size:14px">Página ${paginaActual} de ${totalPaginas}</span>
+    <button class="btn-secondary" id="btnPagSiguiente" ${paginaActual === totalPaginas ? 'disabled' : ''}>Siguiente →</button>
+  `;
+
+  document.getElementById('btnPagAnterior').addEventListener('click', () => {
+    paginaActual--;
+    filtrarYPintar();
+    document.getElementById('eventos').scrollIntoView({ behavior: 'smooth' });
+  });
+  document.getElementById('btnPagSiguiente').addEventListener('click', () => {
+    paginaActual++;
+    filtrarYPintar();
+    document.getElementById('eventos').scrollIntoView({ behavior: 'smooth' });
+  });
+}
 
   function aplicarFiltro(modalidad) {
     modalidadActual = modalidad;
@@ -286,6 +319,13 @@
     boton.style.display = 'inline-flex';
     boton.addEventListener('click', (e) => {
       e.preventDefault();
+      document.getElementById('ceNombre').value = '';
+      document.getElementById('ceDescripcion').value = '';
+      document.getElementById('ceFecha').value = '';
+      document.getElementById('ceLugar').value = '';
+      document.getElementById('ceModalidad').value = 'in-person';
+      document.getElementById('ceCupo').value = '';
+      document.getElementById('estadoModal').innerHTML = '';
       document.getElementById('modalCrear').classList.add('open');
     });
   }
@@ -321,5 +361,43 @@
 
   cargarEventos();
 </script>
+
+<footer class="site-footer wrap">
+  <div class="footer-grid">
+    <div class="footer-brand">
+      <img src="logo-udec.png" alt="Universidad de Cartagena" class="footer-logo">
+      <div class="wordmark">evento<span>s</span></div>
+      <p>Inscripción centralizada a los eventos de la universidad, con cupos en tiempo real y confirmación inmediata.</p>
+    </div>
+
+    <div class="footer-col">
+      <h4>Enlaces</h4>
+      <ul>
+        <li><a href="index.html">Inicio</a></li>
+        <li><a href="index.html#eventos">Eventos disponibles</a></li>
+        <li><a href="my-events.html">Mis eventos</a></li>
+      </ul>
+    </div>
+
+    <div class="footer-col">
+      <h4>Universidad de Cartagena</h4>
+      <ul>
+        <li>Centro Tutorial San Juan Nepomuceno</li>
+        <li>Facultad de Ingeniería</li>
+      </ul>
+    </div>
+
+    <div class="footer-col">
+      <h4>Contacto</h4>
+      <ul>
+        <li><a href="mailto:asierrao@unicartagena.edu.co">asierrao@unicartagena.edu.co</a></li>
+        <li><a href="tel:+57-3022323405">+57-3022323405</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    Proyecto académico — Todos los derechos reservados — 2026
+  </div>
+</footer>
 </body>
 </html>

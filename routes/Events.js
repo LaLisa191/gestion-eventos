@@ -8,7 +8,9 @@ const { verifyToken, isOrganizer } = require('../middleware/auth');
 
 function errorMessage(err) {
   if (err.name === 'ValidationError') {
-    return 'Los datos ingresados no son válidos. Revisa el formulario.';
+    // Muestra el detalle real de qué campo falló, en vez de un mensaje genérico
+    const detalles = Object.values(err.errors).map(e => e.message).join(' / ');
+    return `Revisa el formulario: ${detalles}`;
   }
   return err.message;
 }
@@ -83,7 +85,7 @@ router.post('/:id/reports', verifyToken, isOrganizer, async (req, res) => {
     const event = await Event.findById(req.params.id);
     if (!event) return res.status(404).json({ message: 'Evento no encontrado' });
     if (String(event.organizerId) !== String(req.user._id)) {
-      return res.status(403).json({ message: 'No puedes generar el reporte de un evento que no organizaste' });
+      return res.status(403).json({ message: "No puedes generar el reporte de un evento que no organizaste" });
     }
 
     const registrations = await Registration.find({ eventId: event._id, status: 'confirmed' })
@@ -114,7 +116,7 @@ router.get('/:id/reports', verifyToken, isOrganizer, async (req, res) => {
     const event = await Event.findById(req.params.id);
     if (!event) return res.status(404).json({ message: 'Evento no encontrado' });
     if (String(event.organizerId) !== String(req.user._id)) {
-      return res.status(403).json({ message: 'No puedes ver los reportes de un evento que no organizaste' });
+      return res.status(403).json({ message: "No puedes ver los reportes de un evento que no organizaste" });
     }
     const reports = await Report.find({ eventId: event._id }).sort({ generatedAt: -1 });
     res.json(reports);

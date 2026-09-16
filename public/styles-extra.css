@@ -11,3 +11,7 @@
   max-width: 260px;
 }
 
+.btn-secondary[disabled] {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
