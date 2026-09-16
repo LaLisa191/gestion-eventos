@@ -1,0 +1,34 @@
+
+/* ---------- favoritos ---------- */
+.fav-btn {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: var(--text-muted);
+  line-height: 1;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.fav-btn.active { color: var(--accent-pink); }
+
+.fav-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: 'Inter', sans-serif;
+}
+
+.fav-toggle.active {
+  color: var(--accent-pink);
+  border-color: var(--accent-pink);
+}

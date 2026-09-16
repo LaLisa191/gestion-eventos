@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="styles-compare.css">
 <link rel="stylesheet" href="styles-extra.css">
 <link rel="stylesheet" href="styles-nav.css">
+<link rel="stylesheet" href="styles-favoritos.css">
 </head>
 <body>
 
@@ -99,6 +100,7 @@
 
 <main class="wrap" id="eventos">
   <div class="section-header-row">
+    <button class="fav-toggle" id="btnSoloFavoritos">♥ Solo favoritos</button>
     <div>
       <h2 class="section-title" id="tituloSeccion">Eventos disponibles</h2>
       <p class="section-sub" id="subtituloSeccion">Elige un evento y confirma tu asistencia en menos de un minuto.</p>
@@ -147,6 +149,8 @@
   let eventosCache = [];
   let terminoBusqueda = '';
   let modalidadActual = null;
+  let favoritosIds = new Set();
+  let soloFavoritos = false;
 
   function etiquetaModalidad(m) {
     return m === 'virtual' ? 'Virtual' : 'Presencial';
@@ -162,7 +166,10 @@
 
     grid.innerHTML = events.map(ev => `
       <div class="event-card">
-        <h3>${ev.name}</h3>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+          <h3>${ev.name}</h3>
+          <button class="fav-btn ${favoritosIds.has(ev._id) ? 'active' : ''}" onclick="toggleFavorito('${ev._id}', this)">${favoritosIds.has(ev._id) ? '♥' : '♡'}</button>
+        </div>
         <div class="meta">${new Date(ev.date).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })} · ${ev.location} · ${etiquetaModalidad(ev.modality)}</div>
         <div class="cupo-bar-track"><div class="cupo-bar-fill" style="width:${100 - (ev.availableSpots / ev.maxCapacity * 100)}%"></div></div>
         <div class="cupo-label"><span>${ev.availableSpots} cupos libres</span><span>${ev.maxCapacity} en total</span></div>
@@ -180,6 +187,7 @@
       const t = terminoBusqueda.toLowerCase();
       filtrados = filtrados.filter(e => e.name.toLowerCase().includes(t));
     }
+    if (soloFavoritos) filtrados = filtrados.filter(e => favoritosIds.has(e._id));
     pintarGrid(filtrados);
   }
 
@@ -203,7 +211,47 @@
     filtrarYPintar();
   });
 
+  document.getElementById('btnSoloFavoritos').addEventListener('click', () => {
+    if (!session) { location.href = 'login.html?next=index.html'; return; }
+    soloFavoritos = !soloFavoritos;
+    document.getElementById('btnSoloFavoritos').classList.toggle('active', soloFavoritos);
+    filtrarYPintar();
+  });
+
+  async function toggleFavorito(eventId, btn) {
+    if (!session) { location.href = 'login.html?next=index.html'; return; }
+    const esFavorito = favoritosIds.has(eventId);
+    const res = await fetch(`/api/users/me/favorites/${eventId}`, {
+      method: esFavorito ? 'DELETE' : 'POST',
+      headers: { Authorization: `Bearer ${session.token}` }
+    });
+    if (res.ok) {
+      if (esFavorito) {
+        favoritosIds.delete(eventId);
+        btn.textContent = '♡';
+        btn.classList.remove('active');
+      } else {
+        favoritosIds.add(eventId);
+        btn.textContent = '♥';
+        btn.classList.add('active');
+      }
+      if (soloFavoritos) filtrarYPintar();
+    }
+  }
+
+  async function cargarFavoritos() {
+    if (!session) return;
+    const res = await fetch('/api/users/me/favorites', {
+      headers: { Authorization: `Bearer ${session.token}` }
+    });
+    if (res.ok) {
+      const favs = await res.json();
+      favoritosIds = new Set(favs.filter(f => f).map(f => f._id));
+    }
+  }
+
   async function cargarEventos() {
+    await cargarFavoritos();
     const res = await fetch('/api/events');
     eventosCache = await res.json();
 

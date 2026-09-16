@@ -98,4 +98,40 @@ router.put('/me', verifyToken, async (req, res) => {
   }
 });
 
+// Lista de eventos favoritos del usuario, con los datos del evento
+router.get('/me/favorites', verifyToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).populate('favorites');
+    res.json(user.favorites);
+  } catch (err) {
+    res.status(500).json({ message: errorMessage(err) });
+  }
+});
+
+// Marcar un evento como favorito
+router.post('/me/favorites/:eventId', verifyToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user.favorites.some(id => String(id) === req.params.eventId)) {
+      user.favorites.push(req.params.eventId);
+      await user.save();
+    }
+    res.json({ favorites: user.favorites });
+  } catch (err) {
+    res.status(400).json({ message: errorMessage(err) });
+  }
+});
+
+// Quitar un evento de favoritos
+router.delete('/me/favorites/:eventId', verifyToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    user.favorites = user.favorites.filter(id => String(id) !== req.params.eventId);
+    await user.save();
+    res.json({ favorites: user.favorites });
+  } catch (err) {
+    res.status(400).json({ message: errorMessage(err) });
+  }
+});
+
 module.exports = router;

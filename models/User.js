@@ -5,7 +5,8 @@ const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true, lowercase: true },
   password: { type: String, required: true, select: false },
-  userType: { type: String, enum: ['organizer', 'participant'], required: true }
+  userType: { type: String, enum: ['organizer', 'participant'], required: true },
+  favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Event' }]
 });
 
 // Hashes the password before saving, only if it changed
