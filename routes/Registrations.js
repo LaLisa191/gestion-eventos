@@ -4,6 +4,7 @@ const router = express.Router({ mergeParams: true });
 const Event = require('../models/Event');
 const Registration = require('../models/Registration');
 const { verifyToken } = require('../middleware/auth');
+const { enviarConfirmacionRegistro } = require('../utils/mailer');
 
 router.get('/', verifyToken, async (req, res) => {
   try {
@@ -26,6 +27,7 @@ router.post('/', verifyToken, async (req, res) => {
     const event = await Event.findById(req.params.id);
     if (!event) return res.status(404).json({ message: 'Evento no encontrado' });
 
+    // RF5: impide el registro cuando el cupo ya está lleno
     const registered = await Registration.countDocuments({ eventId: event._id, status: 'confirmed' });
     if (registered >= event.maxCapacity) {
       return res.status(400).json({ message: 'Este evento ya no tiene cupos disponibles' });
@@ -38,15 +40,24 @@ router.post('/', verifyToken, async (req, res) => {
       return res.status(400).json({ message: 'Ya estás registrado en este evento' });
     }
 
+    // RF3: registra al usuario autenticado
     const registration = await Registration.create({ eventId: event._id, participantId: req.user._id });
+
+    // Envía el correo de confirmación. Si falla (por ejemplo, la universidad
+    // bloquea el envío), no debe tumbar el registro que ya quedó guardado.
+    try {
+      await enviarConfirmacionRegistro(req.user.email, event);
+    } catch (err) {
+      console.error('No se pudo enviar el correo de confirmación:', err.message);
+    }
+
+    // RF4 + RNF2: confirmación visual inmediata
     res.status(201).json({ message: 'Registro confirmado', registration });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-// Cancelar un registro propio (libera el cupo automáticamente, ya que el
-// conteo de cupos solo cuenta inscripciones con estado 'confirmed')
 router.patch('/:registrationId/cancel', verifyToken, async (req, res) => {
   try {
     const registration = await Registration.findById(req.params.registrationId);

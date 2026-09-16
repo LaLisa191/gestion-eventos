@@ -8,7 +8,9 @@
     "test": "jest --runInBand"
   },
   "jest": {
-    "setupFilesAfterEnv": ["<rootDir>/jest.setup.js"]
+    "setupFilesAfterEnv": [
+      "<rootDir>/jest.setup.js"
+    ]
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -16,7 +18,8 @@
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.3",
     "mongodb": "^7.6.0",
-    "mongoose": "^8.5.0"
+    "mongoose": "^8.5.0",
+    "nodemailer": "^10.0.10"
   },
   "devDependencies": {
     "jest": "^30.5.1",
