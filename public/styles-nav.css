@@ -1,0 +1,169 @@
+
+.wordmark {
+  font-family: 'Sora', sans-serif;
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: -0.01em;
+}
+
+.wordmark span { color: var(--accent-pink); }
+
+/* ---------- barra fija ---------- */
+.site-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+
+  display: flex;
+  align-items: center;
+  gap: 40px;
+
+  width: 100%;
+  max-width: 1320px;
+  min-height: 76px;
+  box-sizing: border-box;
+
+  margin: 0 auto;
+  padding: 20px 32px;
+
+  background: rgba(16, 13, 27, 0.92);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+}
+
+/* deja espacio para que el contenido no quede tapado detrás de la barra fija */
+body { padding-top: 76px; }
+#eventos { scroll-margin-top: 90px; }
+
+/* ---------- links ---------- */
+.nav-links {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: space-evenly;
+  gap: 20px;
+
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  font-size: 14px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.nav-links > li { flex-shrink: 0; }
+.nav-links a { text-decoration: none; }
+.nav-links a:hover, .nav-links a.active { color: var(--text); }
+
+/* ---------- dropdown, sin parpadeo ---------- */
+.nav-item {
+  position: relative;
+  padding-bottom: 10px;
+  margin-bottom: -10px;
+}
+
+.dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+
+  display: block;
+  min-width: 170px;
+
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px;
+
+  z-index: 1100;
+
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(-4px);
+
+  transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s ease;
+}
+
+.nav-item:hover .dropdown,
+.nav-item:focus-within .dropdown {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.dropdown a {
+  display: block;
+  padding: 9px 10px;
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--text-muted);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.dropdown a:hover {
+  background: var(--bg-card-hover);
+  color: var(--text);
+}
+
+/* ---------- insignia de la universidad ---------- */
+.header-tag {
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  padding: 6px 14px;
+  border-radius: 99px;
+}
+
+/* ---------- botón ☰, solo visible en pantallas angostas ---------- */
+.nav-toggle {
+  display: none;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 18px;
+  padding: 6px 10px;
+  cursor: pointer;
+  margin-left: auto;
+}
+
+@media (max-width: 760px) {
+  .nav-toggle { display: inline-flex; }
+
+  .nav-links {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    width: 100%;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    margin-top: 8px;
+
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    padding: 0 12px;
+    transition: max-height 0.25s ease, opacity 0.2s ease, padding 0.25s ease;
+  }
+
+  .nav-links.open {
+    max-height: 400px;
+    opacity: 1;
+    padding: 12px;
+  }
+
+  .header-tag { margin-left: 0; }
+}

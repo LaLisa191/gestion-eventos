@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="styles-portal.css">
 <link rel="stylesheet" href="styles-compare.css">
 <link rel="stylesheet" href="styles-extra.css">
+<link rel="stylesheet" href="styles-nav.css">
 </head>
 <body>
 
@@ -102,7 +103,8 @@
       <h2 class="section-title" id="tituloSeccion">Eventos disponibles</h2>
       <p class="section-sub" id="subtituloSeccion">Elige un evento y confirma tu asistencia en menos de un minuto.</p>
     </div>
-  </div>
+    <input type="search" id="buscadorEventos" class="search-input" placeholder="Buscar evento por nombre…">
+</div>
   <div class="events-grid" id="grid"></div>
 </main>
 
@@ -143,6 +145,8 @@
 <script>
   const session = getSession();
   let eventosCache = [];
+  let terminoBusqueda = '';
+  let modalidadActual = null;
 
   function etiquetaModalidad(m) {
     return m === 'virtual' ? 'Virtual' : 'Presencial';
@@ -169,7 +173,18 @@
     `).join('');
   }
 
+  function filtrarYPintar() {
+    let filtrados = eventosCache;
+    if (modalidadActual) filtrados = filtrados.filter(e => e.modality === modalidadActual);
+    if (terminoBusqueda) {
+      const t = terminoBusqueda.toLowerCase();
+      filtrados = filtrados.filter(e => e.name.toLowerCase().includes(t));
+    }
+    pintarGrid(filtrados);
+  }
+
   function aplicarFiltro(modalidad) {
+    modalidadActual = modalidad;
     const params = new URLSearchParams(location.search);
     if (modalidad) {
       params.set('modality', modalidad);
@@ -180,10 +195,13 @@
       document.getElementById('subtituloSeccion').textContent = 'Elige un evento y confirma tu asistencia en menos de un minuto.';
     }
     history.replaceState(null, '', `index.html${params.toString() ? '?' + params.toString() : ''}#eventos`);
-
-    const filtrados = modalidad ? eventosCache.filter(e => e.modality === modalidad) : eventosCache;
-    pintarGrid(filtrados);
+    filtrarYPintar();
   }
+
+  document.getElementById('buscadorEventos').addEventListener('input', (e) => {
+    terminoBusqueda = e.target.value;
+    filtrarYPintar();
+  });
 
   async function cargarEventos() {
     const res = await fetch('/api/events');
@@ -215,7 +233,6 @@
     });
   });
 
-  // Botón "Crear evento": solo visible para organizadores logueados
   if (session && session.user.userType === 'organizer') {
     const boton = document.getElementById('btnCrearEvento');
     boton.style.display = 'inline-flex';

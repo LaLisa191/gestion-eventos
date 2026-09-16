@@ -4,7 +4,11 @@
   "description": "Aplicación de gestión de eventos - flujo de registro (RF3, RF4, RF5, RNF2)",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "jest --runInBand"
+  },
+  "jest": {
+    "setupFilesAfterEnv": ["<rootDir>/jest.setup.js"]
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -13,5 +17,9 @@
     "jsonwebtoken": "^9.0.3",
     "mongodb": "^7.6.0",
     "mongoose": "^8.5.0"
+  },
+  "devDependencies": {
+    "jest": "^30.5.1",
+    "supertest": "^7.2.2"
   }
 }
