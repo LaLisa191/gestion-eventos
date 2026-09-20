@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">87.8% </span>
+                <span class="strong">86.66% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>36/41</span>
+                <span class='fraction'>39/45</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">87.17% </span>
+                <span class="strong">86.04% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>34/39</span>
+                <span class='fraction'>37/43</span>
             </div>
         
             
@@ -128,7 +128,19 @@
 <a name='L63'></a><a href='#L63'>63</a>
 <a name='L64'></a><a href='#L64'>64</a>
 <a name='L65'></a><a href='#L65'>65</a>
-<a name='L66'></a><a href='#L66'>66</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">3x</span>
+<a name='L66'></a><a href='#L66'>66</a>
+<a name='L67'></a><a href='#L67'>67</a>
+<a name='L68'></a><a href='#L68'>68</a>
+<a name='L69'></a><a href='#L69'>69</a>
+<a name='L70'></a><a href='#L70'>70</a>
+<a name='L71'></a><a href='#L71'>71</a>
+<a name='L72'></a><a href='#L72'>72</a>
+<a name='L73'></a><a href='#L73'>73</a>
+<a name='L74'></a><a href='#L74'>74</a>
+<a name='L75'></a><a href='#L75'>75</a>
+<a name='L76'></a><a href='#L76'>76</a>
+<a name='L77'></a><a href='#L77'>77</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-yes">3x</span>
@@ -156,6 +168,7 @@
 <span class="cline-any cline-yes">8x</span>
 <span class="cline-any cline-yes">8x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">7x</span>
 <span class="cline-any cline-yes">7x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -166,6 +179,11 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">6x</span>
 <span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">5x</span>
@@ -174,6 +192,10 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -199,6 +221,7 @@ const router = express.Router({ mergeParams: true });
 const Event = require('../models/Event');
 const Registration = require('../models/Registration');
 const { verifyToken } = require('../middleware/auth');
+const { enviarConfirmacionRegistro } = require('../utils/mailer');
 &nbsp;
 router.get('/', verifyToken, async (req, res) =&gt; {
   try {
@@ -221,6 +244,7 @@ router.post('/', verifyToken, async (req, res) =&gt; {
     const event = await Event.findById(req.params.id);
     if (!event) return res.status(404).json({ message: 'Evento no encontrado' });
 &nbsp;
+    // RF5: impide el registro cuando el cupo ya está lleno
     const registered = await Registration.countDocuments({ eventId: event._id, status: 'confirmed' });
     if (registered &gt;= event.maxCapacity) {
       return res.status(400).json({ message: 'Este evento ya no tiene cupos disponibles' });
@@ -233,15 +257,24 @@ router.post('/', verifyToken, async (req, res) =&gt; {
       return res.status(400).json({ message: 'Ya estás registrado en este evento' });
     }
 &nbsp;
+    // RF3: registra al usuario autenticado
     const registration = await Registration.create({ eventId: event._id, participantId: req.user._id });
+&nbsp;
+    // Envía el correo de confirmación. Si falla (por ejemplo, la universidad
+    // bloquea el envío), no debe tumbar el registro que ya quedó guardado.
+    try {
+      await enviarConfirmacionRegistro(req.user.email, event);
+    } catch (err) {
+<span class="cstat-no" title="statement not covered" >      console.error('No se pudo enviar el correo de confirmación:', err.message);</span>
+    }
+&nbsp;
+    // RF4 + RNF2: confirmación visual inmediata
     res.status(201).json({ message: 'Registro confirmado', registration });
   } catch (err) {
 <span class="cstat-no" title="statement not covered" >    res.status(500).json({ message: err.message });</span>
   }
 });
 &nbsp;
-// Cancelar un registro propio (libera el cupo automáticamente, ya que el
-// conteo de cupos solo cuenta inscripciones con estado 'confirmed')
 router.patch('/:registrationId/cancel', verifyToken, async (req, res) =&gt; {
   try {
     const registration = await Registration.findById(req.params.registrationId);
@@ -265,7 +298,7 @@ module.exports = router;
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-09-15T22:28:41.436Z
+                at 2026-09-16T23:45:04.787Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

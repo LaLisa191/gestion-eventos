@@ -63,6 +63,17 @@
   const params = new URLSearchParams(location.search);
   const eventId = params.get('event');
   const session = getSession();
+  let eventoActual = null;
+
+  async function yaEstaRegistrado() {
+    if (!session) return false;
+    const res = await fetch('/api/users/me/registrations', {
+      headers: { Authorization: `Bearer ${session.token}` }
+    });
+    if (!res.ok) return false;
+    const registros = await res.json();
+    return registros.some(r => r.status === 'confirmed' && r.eventId && r.eventId._id === eventId);
+  }
 
   async function cargarEvento() {
     if (!eventId) {
@@ -76,6 +87,8 @@
       return;
     }
     const ev = await res.json();
+    eventoActual = ev;
+
     document.getElementById('nombreEvento').textContent = ev.name;
     document.getElementById('metaEvento').textContent =
       `${new Date(ev.date).toLocaleDateString('es-CO', { day: 'numeric', month: 'long' })} · ${ev.location}`;
@@ -83,18 +96,32 @@
     document.getElementById('cupoTexto').textContent = `${ev.availableSpots} cupos disponibles`;
     document.getElementById('cupoMax').textContent = `${ev.maxCapacity} en total`;
 
+    if (!session) {
+      document.getElementById('necesitaSesion').style.display = 'block';
+      document.getElementById('linkLogin').href = `login.html?next=register.html?event=${eventId}`;
+      return;
+    }
+
+    const boton = document.querySelector('#formulario .btn-primary');
+    const registrado = await yaEstaRegistrado();
+
+    if (registrado) {
+      document.getElementById('formulario').style.display = 'block';
+      document.getElementById('usuarioActual').textContent = session.user.email;
+      boton.disabled = true;
+      boton.textContent = '✓ Registrado';
+      mostrarEstado('success', '✓ Ya estás registrado en este evento.');
+      document.getElementById('btnCalendario').style.display = 'inline-flex';
+      return;
+    }
+
     if (ev.availableSpots <= 0) {
       mostrarEstado('error', 'Este evento ya no tiene cupos disponibles.');
       return;
     }
 
-    if (!session) {
-      document.getElementById('necesitaSesion').style.display = 'block';
-      document.getElementById('linkLogin').href = `login.html?next=register.html?event=${eventId}`;
-    } else {
-      document.getElementById('formulario').style.display = 'block';
-      document.getElementById('usuarioActual').textContent = session.user.email;
-    }
+    document.getElementById('formulario').style.display = 'block';
+    document.getElementById('usuarioActual').textContent = session.user.email;
   }
 
   function mostrarEstado(tipo, texto) {
@@ -102,6 +129,10 @@
   }
 
   async function registrar() {
+    const boton = document.querySelector('#formulario .btn-primary');
+    boton.disabled = true;
+    boton.textContent = 'Registrando…';
+
     const res = await fetch(`/api/events/${eventId}/registrations`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.token}` },
@@ -110,10 +141,13 @@
     const data = await res.json();
 
     if (res.ok) {
-      document.getElementById('formulario').style.display = 'none';
-      mostrarEstado('success', '✓ Registro confirmado. Te esperamos en el evento.');
+      boton.textContent = 'Registrado';
+      mostrarEstado('success', ' Registro confirmado. Te esperamos en el evento.');
+      document.getElementById('btnCalendario').style.display = 'inline-flex';
       cargarEvento();
     } else {
+      boton.disabled = false;
+      boton.textContent = 'Confirmar mi registro';
       mostrarEstado('error', data.message);
     }
   }

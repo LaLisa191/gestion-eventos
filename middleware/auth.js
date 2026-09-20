@@ -14,8 +14,6 @@ async function verifyToken(req, res, next) {
     req.user = user;
     next();
   } catch (err) {
-    // Token inválido, expirado o mal formado: se rechaza la petición.
-    // Se deja registro para poder detectar patrones de tokens sospechosos.
     console.warn('Token inválido o expirado:', err.message);
     return res.status(401).json({ message: 'Token inválido o expirado' });
   }
