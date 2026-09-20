@@ -8,6 +8,7 @@ const eventSchema = new mongoose.Schema({
   maxCapacity: { type: Number, required: true },
   modality: { type: String, enum: ['in-person', 'virtual'], default: 'in-person' },
   status: { type: String, enum: ['active', 'cancelled', 'finished'], default: 'active' },
+  imageUrl: { type: String, default: '' },
   organizerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
 });
 

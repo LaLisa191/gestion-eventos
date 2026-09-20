@@ -12,6 +12,7 @@
 <link rel="stylesheet" href="styles-nav.css">
 <link rel="stylesheet" href="styles-favoritos.css">
 <link rel="stylesheet" href="styles-footer.css">
+<link rel="stylesheet" href="styles-imagenes.css">
 </head>
 <body>
 
@@ -141,6 +142,9 @@
     <label for="ceCupo">Cupo máximo</label>
     <input id="ceCupo" type="number" min="1" placeholder="50">
 
+    <label for="ceImagen">Imagen del evento (opcional)</label>
+    <input id="ceImagen" type="file" accept="image/jpeg,image/png,image/webp">
+
     <button class="btn-primary" style="width:100%;justify-content:center;margin-top:22px" onclick="crearEvento()">Publicar evento</button>
     <div id="estadoModal"></div>
   </div>
@@ -154,9 +158,17 @@
   let modalidadActual = null;
   let favoritosIds = new Set();
   let soloFavoritos = false;
+  let paginaActual = 1;
+  const eventosPorPagina = 6;
 
   function etiquetaModalidad(m) {
     return m === 'virtual' ? 'Virtual' : 'Presencial';
+  }
+
+  function imagenTarjeta(ev) {
+    return ev.imageUrl
+      ? `<img class="event-image" src="${ev.imageUrl}" alt="${ev.name}">`
+      : `<div class="event-image-placeholder"></div>`;
   }
 
   function pintarGrid(events) {
@@ -169,6 +181,7 @@
 
     grid.innerHTML = events.map(ev => `
       <div class="event-card">
+        ${imagenTarjeta(ev)}
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
           <h3>${ev.name}</h3>
           <button class="fav-btn ${favoritosIds.has(ev._id) ? 'active' : ''}" onclick="toggleFavorito('${ev._id}', this)">${favoritosIds.has(ev._id) ? '♥' : '♡'}</button>
@@ -183,49 +196,47 @@
     `).join('');
   }
 
-  let paginaActual = 1;
-const eventosPorPagina = 6;
+  function filtrarYPintar() {
+    let filtrados = eventosCache;
+    if (modalidadActual) filtrados = filtrados.filter(e => e.modality === modalidadActual);
+    if (terminoBusqueda) {
+      const t = terminoBusqueda.toLowerCase();
+      filtrados = filtrados.filter(e => e.name.toLowerCase().includes(t));
+    }
+    if (soloFavoritos) filtrados = filtrados.filter(e => favoritosIds.has(e._id));
 
-function filtrarYPintar() {
-  let filtrados = eventosCache;
-  if (modalidadActual) filtrados = filtrados.filter(e => e.modality === modalidadActual);
-  if (terminoBusqueda) {
-    const t = terminoBusqueda.toLowerCase();
-    filtrados = filtrados.filter(e => e.name.toLowerCase().includes(t));
+    const totalPaginas = Math.max(1, Math.ceil(filtrados.length / eventosPorPagina));
+    if (paginaActual > totalPaginas) paginaActual = totalPaginas;
+
+    const inicio = (paginaActual - 1) * eventosPorPagina;
+    pintarGrid(filtrados.slice(inicio, inicio + eventosPorPagina));
+    renderPaginacion(totalPaginas);
   }
-  if (soloFavoritos) filtrados = filtrados.filter(e => favoritosIds.has(e._id));
 
-  const totalPaginas = Math.max(1, Math.ceil(filtrados.length / eventosPorPagina));
-  if (paginaActual > totalPaginas) paginaActual = totalPaginas;
+  function renderPaginacion(totalPaginas) {
+    const el = document.getElementById('paginacion');
+    if (totalPaginas <= 1) { el.innerHTML = ''; return; }
 
-  const inicio = (paginaActual - 1) * eventosPorPagina;
-  pintarGrid(filtrados.slice(inicio, inicio + eventosPorPagina));
-  renderPaginacion(totalPaginas);
-}
+    el.innerHTML = `
+      <button class="btn-secondary" id="btnPagAnterior" ${paginaActual === 1 ? 'disabled' : ''}>← Anterior</button>
+      <span style="color:var(--text-muted);font-size:14px">Página ${paginaActual} de ${totalPaginas}</span>
+      <button class="btn-secondary" id="btnPagSiguiente" ${paginaActual === totalPaginas ? 'disabled' : ''}>Siguiente →</button>
+    `;
 
-function renderPaginacion(totalPaginas) {
-  const el = document.getElementById('paginacion');
-  if (totalPaginas <= 1) { el.innerHTML = ''; return; }
-
-  el.innerHTML = `
-    <button class="btn-secondary" id="btnPagAnterior" ${paginaActual === 1 ? 'disabled' : ''}>← Anterior</button>
-    <span style="color:var(--text-muted);font-size:14px">Página ${paginaActual} de ${totalPaginas}</span>
-    <button class="btn-secondary" id="btnPagSiguiente" ${paginaActual === totalPaginas ? 'disabled' : ''}>Siguiente →</button>
-  `;
-
-  document.getElementById('btnPagAnterior').addEventListener('click', () => {
-    paginaActual--;
-    filtrarYPintar();
-    document.getElementById('eventos').scrollIntoView({ behavior: 'smooth' });
-  });
-  document.getElementById('btnPagSiguiente').addEventListener('click', () => {
-    paginaActual++;
-    filtrarYPintar();
-    document.getElementById('eventos').scrollIntoView({ behavior: 'smooth' });
-  });
-}
+    document.getElementById('btnPagAnterior').addEventListener('click', () => {
+      paginaActual--;
+      filtrarYPintar();
+      document.getElementById('eventos').scrollIntoView({ behavior: 'smooth' });
+    });
+    document.getElementById('btnPagSiguiente').addEventListener('click', () => {
+      paginaActual++;
+      filtrarYPintar();
+      document.getElementById('eventos').scrollIntoView({ behavior: 'smooth' });
+    });
+  }
 
   function aplicarFiltro(modalidad) {
+    paginaActual = 1;
     modalidadActual = modalidad;
     const params = new URLSearchParams(location.search);
     if (modalidad) {
@@ -241,12 +252,14 @@ function renderPaginacion(totalPaginas) {
   }
 
   document.getElementById('buscadorEventos').addEventListener('input', (e) => {
+    paginaActual = 1;
     terminoBusqueda = e.target.value;
     filtrarYPintar();
   });
 
   document.getElementById('btnSoloFavoritos').addEventListener('click', () => {
     if (!session) { location.href = 'login.html?next=index.html'; return; }
+    paginaActual = 1;
     soloFavoritos = !soloFavoritos;
     document.getElementById('btnSoloFavoritos').classList.toggle('active', soloFavoritos);
     filtrarYPintar();
@@ -280,7 +293,7 @@ function renderPaginacion(totalPaginas) {
     });
     if (res.ok) {
       const favs = await res.json();
-      favoritosIds = new Set(favs.filter(Boolean).map(f => f._id));
+      favoritosIds = new Set(favs.filter(f => f).map(f => f._id));
     }
   }
 
@@ -307,14 +320,6 @@ function renderPaginacion(totalPaginas) {
     aplicarFiltro(modalidadInicial);
   }
 
-  document.querySelectorAll('.dropdown a[data-modality]').forEach(a => {
-    a.addEventListener('click', (e) => {
-      e.preventDefault();
-      aplicarFiltro(a.dataset.modality);
-      document.getElementById('eventos').scrollIntoView({ behavior: 'smooth' });
-    });
-  });
-
   if (session && session.user.userType === 'organizer') {
     const boton = document.getElementById('btnCrearEvento');
     boton.style.display = 'inline-flex';
@@ -326,6 +331,7 @@ function renderPaginacion(totalPaginas) {
       document.getElementById('ceLugar').value = '';
       document.getElementById('ceModalidad').value = 'in-person';
       document.getElementById('ceCupo').value = '';
+      document.getElementById('ceImagen').value = '';
       document.getElementById('estadoModal').innerHTML = '';
       document.getElementById('modalCrear').classList.add('open');
     });
@@ -336,19 +342,21 @@ function renderPaginacion(totalPaginas) {
   });
 
   async function crearEvento() {
-    const body = {
-      name: document.getElementById('ceNombre').value,
-      description: document.getElementById('ceDescripcion').value,
-      date: document.getElementById('ceFecha').value,
-      location: document.getElementById('ceLugar').value,
-      modality: document.getElementById('ceModalidad').value,
-      maxCapacity: Number(document.getElementById('ceCupo').value)
-    };
+    const formData = new FormData();
+    formData.append('name', document.getElementById('ceNombre').value);
+    formData.append('description', document.getElementById('ceDescripcion').value);
+    formData.append('date', document.getElementById('ceFecha').value);
+    formData.append('location', document.getElementById('ceLugar').value);
+    formData.append('modality', document.getElementById('ceModalidad').value);
+    formData.append('maxCapacity', document.getElementById('ceCupo').value);
+
+    const archivo = document.getElementById('ceImagen').files[0];
+    if (archivo) formData.append('image', archivo);
 
     const res = await fetch('/api/events', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.token}` },
-      body: JSON.stringify(body)
+      headers: { 'Authorization': `Bearer ${session.token}` },
+      body: formData
     });
     const data = await res.json();
 
@@ -361,6 +369,7 @@ function renderPaginacion(totalPaginas) {
   }
 
   cargarEventos();
+
 </script>
 
 <footer class="site-footer wrap">

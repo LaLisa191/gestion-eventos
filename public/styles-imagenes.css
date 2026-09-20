@@ -1,0 +1,18 @@
+
+/* ---------- imagen del evento ---------- */
+.event-image {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  display: block;
+  margin-bottom: 4px;
+}
+
+.event-image-placeholder {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, #2c1a4d, #7c3aed 60%, #ec4899 130%);
+  margin-bottom: 4px;
+}

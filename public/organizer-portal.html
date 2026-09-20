@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="styles-extra.css">
 <link rel="stylesheet" href="styles-nav.css">
 <link rel="stylesheet" href="styles-footer.css">
+<link rel="stylesheet" href="styles-imagenes.css">
 </head>
 <body>
 
@@ -77,6 +78,9 @@
     <label for="ceCupo">Cupo máximo</label>
     <input id="ceCupo" type="number" min="1">
 
+    <label for="ceImagen">Imagen del evento (opcional)</label>
+    <input id="ceImagen" type="file" accept="image/jpeg,image/png,image/webp">
+
     <button class="btn-primary" style="width:100%;justify-content:center;margin-top:22px" onclick="guardarEvento()">Guardar</button>
     <div id="estadoModalEvento"></div>
   </div>
@@ -106,6 +110,11 @@
     const nombres = { active: 'Activo', cancelled: 'Cancelado', finished: 'Finalizado' };
     return nombres[estado] || estado;
   }
+  function imagenTarjeta(ev) {
+    return ev.imageUrl
+      ? `<img class="event-image" src="${ev.imageUrl}" alt="${ev.name}">`
+      : `<div class="event-image-placeholder"></div>`;
+  }
 
   async function cargarMisEventos() {
     if (!session || session.user.userType !== 'organizer') {
@@ -130,6 +139,7 @@
 
     grid.innerHTML = mios.map(ev => `
       <div class="event-card">
+        ${imagenTarjeta(ev)}
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
           <h3>${ev.name}</h3>
           <span class="status-pill">${etiquetaEstado(ev.status)}</span>
@@ -146,7 +156,6 @@
     `).join('');
   }
 
-  // ---------- crear / editar ----------
   function abrirCreacion() {
     eventoEnEdicion = null;
     document.getElementById('tituloModalEvento').textContent = 'Nuevo evento';
@@ -156,6 +165,8 @@
     document.getElementById('ceLugar').value = '';
     document.getElementById('ceModalidad').value = 'in-person';
     document.getElementById('ceCupo').value = '';
+    document.getElementById('ceImagen').value = '';
+    document.getElementById('estadoModalEvento').innerHTML = '';
     document.getElementById('modalEvento').classList.add('open');
   }
 
@@ -169,6 +180,10 @@
     document.getElementById('ceLugar').value = ev.location;
     document.getElementById('ceModalidad').value = ev.modality || 'in-person';
     document.getElementById('ceCupo').value = ev.maxCapacity;
+    document.getElementById('ceImagen').value = '';
+    document.getElementById('estadoModalEvento').innerHTML = ev.imageUrl
+      ? '<div class="meta" style="color:var(--text-muted);font-size:13px;margin-top:8px">Ya tiene una imagen. Elige un archivo solo si quieres reemplazarla.</div>'
+      : '';
     document.getElementById('modalEvento').classList.add('open');
   }
 
@@ -182,22 +197,24 @@
   });
 
   async function guardarEvento() {
-    const body = {
-      name: document.getElementById('ceNombre').value,
-      description: document.getElementById('ceDescripcion').value,
-      date: document.getElementById('ceFecha').value,
-      location: document.getElementById('ceLugar').value,
-      modality: document.getElementById('ceModalidad').value,
-      maxCapacity: Number(document.getElementById('ceCupo').value)
-    };
+    const formData = new FormData();
+    formData.append('name', document.getElementById('ceNombre').value);
+    formData.append('description', document.getElementById('ceDescripcion').value);
+    formData.append('date', document.getElementById('ceFecha').value);
+    formData.append('location', document.getElementById('ceLugar').value);
+    formData.append('modality', document.getElementById('ceModalidad').value);
+    formData.append('maxCapacity', document.getElementById('ceCupo').value);
+
+    const archivo = document.getElementById('ceImagen').files[0];
+    if (archivo) formData.append('image', archivo);
 
     const url = eventoEnEdicion ? `/api/events/${eventoEnEdicion}` : '/api/events';
     const method = eventoEnEdicion ? 'PUT' : 'POST';
 
     const res = await fetch(url, {
       method,
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.token}` },
-      body: JSON.stringify(body)
+      headers: { 'Authorization': `Bearer ${session.token}` },
+      body: formData
     });
     const data = await res.json();
 
@@ -209,7 +226,6 @@
     }
   }
 
-  // ---------- eliminar ----------
   async function eliminarEvento(id) {
     if (!confirm('¿Seguro que quieres eliminar este evento? Esta acción no se puede deshacer.')) return;
     const res = await fetch(`/api/events/${id}`, {
@@ -224,7 +240,6 @@
     }
   }
 
-  // ---------- reporte ----------
   async function verReporte(id) {
     const res = await fetch(`/api/events/${id}/reports`, {
       method: 'POST',
@@ -254,6 +269,7 @@
   });
 
   cargarMisEventos();
+
 </script>
 <footer class="site-footer wrap">
   <div class="footer-grid">

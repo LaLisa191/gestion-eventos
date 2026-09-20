@@ -5,33 +5,57 @@ const Event = require('../models/Event');
 const Registration = require('../models/Registration');
 const Report = require('../models/Reports');
 const { verifyToken, isOrganizer } = require('../middleware/auth');
+const upload = require('../middleware/upload');
 
 function errorMessage(err) {
   if (err.name === 'ValidationError') {
-    // Muestra el detalle real de qué campo falló, en vez de un mensaje genérico
     const detalles = Object.values(err.errors).map(e => e.message).join(' / ');
     return `Revisa el formulario: ${detalles}`;
   }
   return err.message;
 }
 
-router.post('/', verifyToken, isOrganizer, async (req, res) => {
+// RF1: crear un evento, con imagen opcional
+router.post('/', verifyToken, isOrganizer, upload.single('image'), async (req, res) => {
   try {
-    const event = await Event.create({ ...req.body, organizerId: req.user._id });
+    const eventData = {
+      name: req.body.name,
+      description: req.body.description,
+      date: req.body.date,
+      location: req.body.location,
+      modality: req.body.modality,
+      maxCapacity: Number(req.body.maxCapacity),
+      organizerId: req.user._id
+    };
+    if (req.file) {
+      eventData.imageUrl = `/uploads/${req.file.filename}`;
+    }
+    const event = await Event.create(eventData);
     res.status(201).json(event);
   } catch (err) {
     res.status(400).json({ message: errorMessage(err) });
   }
 });
 
-router.put('/:id', verifyToken, isOrganizer, async (req, res) => {
+// Editar un evento (solo el organizador dueño), con imagen opcional nueva
+router.put('/:id', verifyToken, isOrganizer, upload.single('image'), async (req, res) => {
   try {
     const event = await Event.findById(req.params.id);
     if (!event) return res.status(404).json({ message: 'Evento no encontrado' });
     if (String(event.organizerId) !== String(req.user._id)) {
       return res.status(403).json({ message: 'No puedes editar un evento que no organizaste' });
     }
-    Object.assign(event, req.body);
+
+    event.name = req.body.name;
+    event.description = req.body.description;
+    event.date = req.body.date;
+    event.location = req.body.location;
+    event.modality = req.body.modality;
+    event.maxCapacity = Number(req.body.maxCapacity);
+    if (req.file) {
+      event.imageUrl = `/uploads/${req.file.filename}`;
+    }
+
     await event.save();
     res.json(event);
   } catch (err) {
