@@ -5,9 +5,17 @@ const User = require('../models/User');
 const Registration = require('../models/Registration');
 const { verifyToken } = require('../middleware/auth');
 
+function esCorreoValido(correo) {
+  const arroba = correo.indexOf('@');
+  if (arroba <= 0) return false;
+  const dominio = correo.slice(arroba + 1);
+  return dominio.includes('.') && !/\s/.test(correo);
+}
+
 function errorMessage(err) {
   if (err.name === 'ValidationError') {
-    return 'Los datos ingresados no son válidos. Revisa el formulario.';
+    const detalles = Object.values(err.errors).map(e => e.message).join(' / ');
+    return `Revisa el formulario: ${detalles}`;
   }
   if (err.code === 11000) {
     return 'Ya existe un registro con esos datos.';
@@ -21,10 +29,13 @@ router.post('/signup', async (req, res) => {
     if (!name || !email || !password || !userType) {
       return res.status(400).json({ message: 'Todos los campos son obligatorios' });
     }
+    if (!esCorreoValido(email)) {
+      return res.status(400).json({ message: 'Escribe un correo con formato válido' });
+    }
     if (password.length < 6) {
       return res.status(400).json({ message: 'La contraseña debe tener al menos 6 caracteres' });
     }
-    const existing = await User.findOne({ email });
+    const existing = await User.findOne({ email: email.toLowerCase() });
     if (existing) return res.status(400).json({ message: 'Ya existe una cuenta con ese correo' });
 
     const user = await User.create({ name, email, password, userType });
@@ -51,7 +62,6 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// "Mis eventos": todas las inscripciones del usuario logueado, con los datos del evento
 router.get('/me/registrations', verifyToken, async (req, res) => {
   try {
     const registrations = await Registration.find({ participantId: req.user._id })
@@ -63,7 +73,6 @@ router.get('/me/registrations', verifyToken, async (req, res) => {
   }
 });
 
-// Editar perfil: nombre, correo y, opcionalmente, contraseña
 router.put('/me', verifyToken, async (req, res) => {
   try {
     const { name, email, currentPassword, newPassword } = req.body;
@@ -72,6 +81,9 @@ router.put('/me', verifyToken, async (req, res) => {
     if (name) user.name = name;
 
     if (email && email.toLowerCase() !== user.email) {
+      if (!esCorreoValido(email)) {
+        return res.status(400).json({ message: 'Escribe un correo con formato válido' });
+      }
       const existing = await User.findOne({ email: email.toLowerCase() });
       if (existing) return res.status(400).json({ message: 'Ya existe una cuenta con ese correo' });
       user.email = email.toLowerCase();
@@ -98,7 +110,6 @@ router.put('/me', verifyToken, async (req, res) => {
   }
 });
 
-// Lista de eventos favoritos del usuario, con los datos del evento
 router.get('/me/favorites', verifyToken, async (req, res) => {
   try {
     const user = await User.findById(req.user._id).populate('favorites');
@@ -108,7 +119,6 @@ router.get('/me/favorites', verifyToken, async (req, res) => {
   }
 });
 
-// Marcar un evento como favorito
 router.post('/me/favorites/:eventId', verifyToken, async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
@@ -122,7 +132,6 @@ router.post('/me/favorites/:eventId', verifyToken, async (req, res) => {
   }
 });
 
-// Quitar un evento de favoritos
 router.delete('/me/favorites/:eventId', verifyToken, async (req, res) => {
   try {
     const user = await User.findById(req.user._id);

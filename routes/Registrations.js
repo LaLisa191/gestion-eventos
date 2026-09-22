@@ -43,16 +43,13 @@ router.post('/', verifyToken, async (req, res) => {
     // RF3: registra al usuario autenticado
     const registration = await Registration.create({ eventId: event._id, participantId: req.user._id });
 
-    // Envía el correo de confirmación. Si falla (por ejemplo, la universidad
-    // bloquea el envío), no debe tumbar el registro que ya quedó guardado.
-    try {
-      await enviarConfirmacionRegistro(req.user.email, event);
-    } catch (err) {
-      console.error('No se pudo enviar el correo de confirmación:', err.message);
-    }
+// RF4 + RNF2: confirmación visual inmediata — no se espera al correo
+res.status(201).json({ message: 'Registro confirmado', registration });
 
-    // RF4 + RNF2: confirmación visual inmediata
-    res.status(201).json({ message: 'Registro confirmado', registration });
+// El correo se manda de fondo, sin bloquear la respuesta al usuario
+enviarConfirmacionRegistro(req.user.email, event).catch(err => {
+  console.error('No se pudo enviar el correo de confirmación:', err.message);
+});
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

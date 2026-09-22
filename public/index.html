@@ -101,14 +101,15 @@
 </section>
 
 <main class="wrap" id="eventos">
-  <div class="section-header-row">
+ <div class="section-header-row" style="flex-direction:column;align-items:stretch;gap:16px">
+  <div>
+    <h2 class="section-title" id="tituloSeccion">Eventos disponibles</h2>
+    <p class="section-sub" id="subtituloSeccion">Consulta los eventos disponibles e inscríbete fácilmente en actividades presenciales y virtuales.</p>
+  </div>
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap">
     <button class="fav-toggle" id="btnSoloFavoritos">♥ Solo favoritos</button>
-    <div>
-      <h2 class="section-title" id="tituloSeccion">Eventos disponibles</h2>
-      <p class="section-sub" id="subtituloSeccion">Elige un evento y confirma tu asistencia en menos de un minuto.</p>
-    </div>
-    <label for="buscadorEventos" class="sr-only">Buscar evento por nombre</label>
-<input type="search" id="buscadorEventos" class="search-input" placeholder="Buscar evento por nombre…">
+    <input type="search" id="buscadorEventos" class="search-input" placeholder="Buscar evento por nombre…" aria-label="Buscar evento por nombre">
+  </div>
 </div>
   <div class="events-grid" id="grid"></div>
   <div id="paginacion" style="display:flex;justify-content:center;align-items:center;gap:14px;margin-top:24px"></div>
@@ -245,7 +246,7 @@
         `Mostrando eventos ${etiquetaModalidad(modalidad).toLowerCase()}s. `;
     } else {
       params.delete('modality');
-      document.getElementById('subtituloSeccion').textContent = 'Elige un evento y confirma tu asistencia en menos de un minuto.';
+      document.getElementById('subtituloSeccion').textContent = 'Consulta los eventos disponibles e inscríbete fácilmente en actividades presenciales y virtuales.';
     }
     history.replaceState(null, '', `index.html${params.toString() ? '?' + params.toString() : ''}#eventos`);
     filtrarYPintar();
@@ -293,7 +294,7 @@
     });
     if (res.ok) {
       const favs = await res.json();
-      favoritosIds = new Set(favs.filter(f => f).map(f => f._id));
+      favoritosIds = new Set(favs.filter(Boolean).map(f => f._id));
     }
   }
 
@@ -367,6 +368,14 @@
       document.getElementById('estadoModal').innerHTML = `<div class="state-box error">${data.message}</div>`;
     }
   }
+
+  document.querySelectorAll('.dropdown a[data-modality]').forEach(a => {
+  a.addEventListener('click', (e) => {
+    e.preventDefault();
+    aplicarFiltro(a.dataset.modality);
+    document.getElementById('eventos').scrollIntoView({ behavior: 'smooth' });
+  });
+});
 
   cargarEventos();
 

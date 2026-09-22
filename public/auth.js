@@ -11,6 +11,33 @@ function clearSession() {
   localStorage.removeItem('session');
 }
 
+function crearModalLogout() {
+  if (document.getElementById('modalLogout')) return;
+
+  const div = document.createElement('div');
+  div.className = 'modal-backdrop';
+  div.id = 'modalLogout';
+  div.innerHTML = `
+    <div class="modal-card" style="max-width:360px;text-align:center">
+      <h3>¿Cerrar sesión?</h3>
+      <p style="color:var(--text-muted);font-size:14px;margin-top:10px">Vas a salir de tu cuenta en este dispositivo.</p>
+      <div style="display:flex;gap:10px;margin-top:22px">
+        <button class="btn-secondary" style="flex:1;justify-content:center" id="cancelarLogout">Cancelar</button>
+        <button class="btn-primary" style="flex:1;justify-content:center" id="confirmarLogout">Salir</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(div);
+
+  document.getElementById('cancelarLogout').addEventListener('click', () => {
+    div.classList.remove('open');
+  });
+  document.getElementById('confirmarLogout').addEventListener('click', () => {
+    clearSession();
+    location.href = 'index.html';
+  });
+}
+
 function pintarCuenta(cuenta, session) {
   if (!cuenta) return;
 
@@ -22,8 +49,8 @@ function pintarCuenta(cuenta, session) {
   cuenta.innerHTML = `<a href="#" id="logoutLink">Salir (${session.user.name.split(' ')[0]})</a>`;
   document.getElementById('logoutLink').addEventListener('click', (e) => {
     e.preventDefault();
-    clearSession();
-    location.href = 'index.html';
+    crearModalLogout();
+    document.getElementById('modalLogout').classList.add('open');
   });
 }
 
@@ -43,7 +70,6 @@ function pintarPerfil(el, session) {
   el.innerHTML = session ? `<a href="profile.html">Mi perfil</a>` : '';
 }
 
-// Pinta "Mis eventos", "Mi portal", "Mi perfil" y "Iniciar sesión"/"Salir" según la sesión
 function renderAccountNav() {
   const session = getSession();
   pintarCuenta(document.getElementById('navAccount'), session);
@@ -54,11 +80,51 @@ function renderAccountNav() {
 
 document.addEventListener('DOMContentLoaded', renderAccountNav);
 
-// Arregla el "botón atrás": si el navegador restaura la página desde su
-// caché (bfcache) en vez de cargarla de nuevo, la sesión mostrada puede
-// quedar desactualizada. Forzamos una recarga real en ese caso.
 window.addEventListener('pageshow', (event) => {
   if (event.persisted) {
     location.reload();
   }
 });
+
+function descargarICS(ev) {
+  const fecha = new Date(ev.date);
+  const yyyy = fecha.getFullYear();
+  const mm = String(fecha.getMonth() + 1).padStart(2, '0');
+  const dd = String(fecha.getDate()).padStart(2, '0');
+  const fechaFin = new Date(fecha);
+  fechaFin.setDate(fechaFin.getDate() + 1);
+  const yyyy2 = fechaFin.getFullYear();
+  const mm2 = String(fechaFin.getMonth() + 1).padStart(2, '0');
+  const dd2 = String(fechaFin.getDate()).padStart(2, '0');
+
+  const ics = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'BEGIN:VEVENT',
+    `UID:${ev._id}@eventos-udec`,
+    `DTSTAMP:${yyyy}${mm}${dd}T000000Z`,
+    `DTSTART;VALUE=DATE:${yyyy}${mm}${dd}`,
+    `DTEND;VALUE=DATE:${yyyy2}${mm2}${dd2}`,
+    `SUMMARY:${ev.name}`,
+    `LOCATION:${ev.location}`,
+    `DESCRIPTION:${(ev.description || '').replace(/\n/g, ' ')}`,
+    'END:VEVENT',
+    'END:VCALENDAR'
+  ].join('\r\n');
+
+  const blob = new Blob([ics], { type: 'text/calendar' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${ev.name}.ics`;
+  a.click();
+  URL.revokeObjectURL(url);
+  
+}
+
+function esCorreoValido(correo) {
+  const arroba = correo.indexOf('@');
+  if (arroba <= 0) return false;
+  const dominio = correo.slice(arroba + 1);
+  return dominio.includes('.') && !/\s/.test(correo);
+}

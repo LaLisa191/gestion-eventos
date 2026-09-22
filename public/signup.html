@@ -72,9 +72,14 @@
 
 <script src="auth.js"></script>
 <script>
+
   async function signup() {
+  const email = document.getElementById('email').value.trim();
+if (!esCorreoValido(email)) {
+  document.getElementById('estado').innerHTML = `<div class="state-box error">Escribe un correo con formato válido</div>`;
+  return;
+}
     const name = document.getElementById('name').value;
-    const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
     const userType = document.querySelector('input[name=userType]:checked').value;
 

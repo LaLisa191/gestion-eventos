@@ -3,7 +3,22 @@ const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
-  email: { type: String, required: true, unique: true, lowercase: true },
+  email: {
+  type: String,
+  required: true,
+  unique: true,
+  lowercase: true,
+  trim: true,
+  validate: {
+    validator: function (correo) {
+      const arroba = correo.indexOf('@');
+      if (arroba <= 0) return false;
+      const dominio = correo.slice(arroba + 1);
+      return dominio.includes('.') && !/\s/.test(correo);
+    },
+    message: 'El correo no tiene un formato válido'
+  }
+},
   password: { type: String, required: true, select: false },
   userType: { type: String, enum: ['organizer', 'participant'], required: true },
   favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Event' }]
