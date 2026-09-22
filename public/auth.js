@@ -78,7 +78,40 @@ function renderAccountNav() {
   pintarPerfil(document.getElementById('navPerfil'), session);
 }
 
-document.addEventListener('DOMContentLoaded', renderAccountNav);
+// Carga el header y el footer compartidos dentro de sus contenedores.
+// Si una página no tiene esos contenedores (todavía no la migraste),
+// esto simplemente no hace nada ahí y el nav sigue funcionando como antes.
+async function cargarParciales() {
+  const headerPlaceholder = document.getElementById('header-placeholder');
+  const footerPlaceholder = document.getElementById('footer-placeholder');
+
+  if (headerPlaceholder) {
+    const res = await fetch('partials/header.html');
+    headerPlaceholder.innerHTML = await res.text();
+  }
+  if (footerPlaceholder) {
+    const res = await fetch('partials/footer.html');
+    footerPlaceholder.innerHTML = await res.text();
+  }
+
+  renderAccountNav();
+}
+
+document.addEventListener('DOMContentLoaded', cargarParciales);
+
+// El dropdown de "Eventos disponibles" (Presenciales/Virtuales) se maneja
+// aquí, por delegación, porque el header ahora se inyecta después y un
+// addEventListener normal no alcanzaría a "ver" esos links a tiempo.
+document.addEventListener('click', (e) => {
+  const dropdownLink = e.target.closest('.dropdown a[data-modality]');
+  if (dropdownLink) {
+    e.preventDefault();
+    if (typeof aplicarFiltro === 'function') {
+      aplicarFiltro(dropdownLink.dataset.modality);
+      document.getElementById('eventos')?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }
+});
 
 window.addEventListener('pageshow', (event) => {
   if (event.persisted) {
@@ -107,7 +140,7 @@ function descargarICS(ev) {
     `DTEND;VALUE=DATE:${yyyy2}${mm2}${dd2}`,
     `SUMMARY:${ev.name}`,
     `LOCATION:${ev.location}`,
-    `DESCRIPTION:${(ev.description || '').replace(/\n/g, ' ')}`,
+    `DESCRIPTION:${(ev.description || '').replaceAll('\n', ' ')}`,
     'END:VEVENT',
     'END:VCALENDAR'
   ].join('\r\n');
@@ -119,7 +152,6 @@ function descargarICS(ev) {
   a.download = `${ev.name}.ics`;
   a.click();
   URL.revokeObjectURL(url);
-  
 }
 
 function esCorreoValido(correo) {

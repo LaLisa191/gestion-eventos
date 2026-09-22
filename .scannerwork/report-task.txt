@@ -2,5 +2,5 @@ projectKey=Gestion-de-Eventos
 serverUrl=http://localhost:9000
 serverVersion=26.9.0.129388
 dashboardUrl=http://localhost:9000/dashboard?id=Gestion-de-Eventos
-ceTaskId=09b7eb35-ea66-4cae-9ee7-4cfd937ad704
-ceTaskUrl=http://localhost:9000/api/ce/task?id=09b7eb35-ea66-4cae-9ee7-4cfd937ad704
+ceTaskId=6271a220-17fb-450c-b269-a208c98c3ec7
+ceTaskUrl=http://localhost:9000/api/ce/task?id=6271a220-17fb-450c-b269-a208c98c3ec7

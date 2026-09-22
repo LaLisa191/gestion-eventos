@@ -223,20 +223,23 @@ test('debe permitir a un organizador editar su evento', async () => {
   const eventId = createResponse.body._id;
 
   // Editar evento
-  const response = await request(app)
-    .put(`/api/events/${eventId}`)
-    .set('Authorization', `Bearer ${token}`)
-    .send({
-      name: 'Evento actualizado',
-      description: 'Nueva descripción',
-      maxCapacity: 100
-    });
+// Editar evento
+const response = await request(app)
+  .put(`/api/events/${eventId}`)
+  .set('Authorization', `Bearer ${token}`)
+  .send({
+    name: 'Evento actualizado',
+    description: 'Nueva descripción',
+    maxCapacity: 100
+  });
 
-  expect(response.statusCode).toBe(200);
-  expect(response.body.name).toBe('Evento actualizado');
-  expect(response.body.description).toBe('Nueva descripción');
-  expect(response.body.maxCapacity).toBe(100);
-});
+console.log('STATUS EDITAR:', response.statusCode);
+console.log('RESPUESTA EDITAR:', response.body);
+
+expect(response.statusCode).toBe(200);
+expect(response.body.name).toBe('Evento actualizado');
+expect(response.body.description).toBe('Nueva descripción');
+expect(response.body.maxCapacity).toBe(100);
 
 test('debe rechazar a un organizador al editar un evento que no le pertenece', async () => {
   const password = '123456';
@@ -834,5 +837,6 @@ test('un organizador no debe poder consultar los reportes de un evento ajeno', a
   expect(response.body.message).toBe(
     'No puedes ver los reportes de un evento que no organizaste'
   );
+});
 });
 });
