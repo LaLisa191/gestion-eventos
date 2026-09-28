@@ -1,5 +1,6 @@
 <header class="site-header">
   <div class="wordmark">evento<span>s</span></div>
+  <button class="nav-toggle" id="navToggle" aria-label="Abrir menú">☰</button>
   <ul class="nav-links">
     <li><a href="index.html" class="active">Inicio</a></li>
     <li class="nav-item">
@@ -17,3 +18,18 @@
   </ul>
   <div class="header-tag">Universidad de Cartagena</div>
 </header> 
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const navLinks = document.querySelector('.nav-links');
+    // Selecciona todos los enlaces dentro del menú
+    const menuItems = document.querySelectorAll('.nav-links a');
+
+    menuItems.forEach(item => {
+      item.addEventListener('click', () => {
+        // Remueve la clase que mantiene abierto el menú al hacer clic en una opción
+        navLinks.classList.remove('active'); 
+      });
+    });
+  });
+</script>

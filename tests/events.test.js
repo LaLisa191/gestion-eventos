@@ -55,6 +55,7 @@ describe('POST /api/events', () => {
     expect(response.body.location).toBe('Cartagena');
     expect(response.body.maxCapacity).toBe(100);
   });
+
 test('debe rechazar la creación de un evento sin token', async () => {
   const response = await request(app)
     .post('/api/events')
@@ -230,8 +231,19 @@ const response = await request(app)
   .send({
     name: 'Evento actualizado',
     description: 'Nueva descripción',
-    maxCapacity: 100
+    date: '2026-12-20T18:00:00.000Z',
+    location: 'Cartagena',
+    maxCapacity: 100,
+    modality: 'in-person'
   });
+
+expect(response.statusCode).toBe(200);
+expect(response.body.name).toBe('Evento actualizado');
+expect(response.body.description).toBe('Nueva descripción');
+expect(response.body.date).toBe('2026-12-20T18:00:00.000Z');
+expect(response.body.location).toBe('Cartagena');
+expect(response.body.maxCapacity).toBe(100);
+expect(response.body.modality).toBe('in-person');
 
 console.log('STATUS EDITAR:', response.statusCode);
 console.log('RESPUESTA EDITAR:', response.body);
@@ -240,6 +252,7 @@ expect(response.statusCode).toBe(200);
 expect(response.body.name).toBe('Evento actualizado');
 expect(response.body.description).toBe('Nueva descripción');
 expect(response.body.maxCapacity).toBe(100);
+});
 
 test('debe rechazar a un organizador al editar un evento que no le pertenece', async () => {
   const password = '123456';
@@ -837,6 +850,5 @@ test('un organizador no debe poder consultar los reportes de un evento ajeno', a
   expect(response.body.message).toBe(
     'No puedes ver los reportes de un evento que no organizaste'
   );
-});
 });
 });

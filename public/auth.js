@@ -103,6 +103,12 @@ document.addEventListener('DOMContentLoaded', cargarParciales);
 // aquí, por delegación, porque el header ahora se inyecta después y un
 // addEventListener normal no alcanzaría a "ver" esos links a tiempo.
 document.addEventListener('click', (e) => {
+  const toggle = e.target.closest('#navToggle');
+  if (toggle) {
+    document.querySelector('.nav-links')?.classList.toggle('open');
+    return;
+  }
+
   const dropdownLink = e.target.closest('.dropdown a[data-modality]');
   if (dropdownLink) {
     e.preventDefault();
