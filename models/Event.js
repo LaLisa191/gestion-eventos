@@ -10,6 +10,8 @@ const eventSchema = new mongoose.Schema({
   status: { type: String, enum: ['active', 'cancelled', 'finished'], default: 'active' },
   imageUrl: { type: String, default: '' },
   organizerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
+}, {
+    timestamps: true
 });
 
 module.exports = mongoose.model('Event', eventSchema);

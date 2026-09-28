@@ -11,6 +11,7 @@
 <link rel="stylesheet" href="styles-nav.css">
 <link rel="stylesheet" href="styles-footer.css">
 <link rel="stylesheet" href="styles-imagenes.css">
+<link rel="stylesheet" href="styles-confirmar.css">
 </head>
 <body>
 
@@ -78,6 +79,18 @@
       <thead><tr><th>Participante</th><th>Correo</th><th>Fecha de registro</th></tr></thead>
       <tbody id="filasReporte"></tbody>
     </table>
+  </div>
+</div>
+
+<!-- Modal: confirmar eliminación -->
+<div class="modal-backdrop" id="modalConfirmar">
+  <div class="confirm-card" role="dialog" aria-modal="true" aria-labelledby="confirmTitulo">
+    <h3 id="confirmTitulo">¿Eliminar evento?</h3>
+    <p id="confirmTexto"></p>
+    <div class="confirm-actions">
+      <button class="btn-secondary" id="confirmCancelar">Cancelar</button>
+      <button class="btn-primary" id="confirmAceptar">Eliminar</button>
+    </div>
   </div>
 </div>
 
@@ -208,19 +221,72 @@
     }
   }
 
-  async function eliminarEvento(id) {
-    if (!confirm('¿Seguro que quieres eliminar este evento? Esta acción no se puede deshacer.')) return;
-    const res = await fetch(`/api/events/${id}`, {
-      method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${session.token}` }
-    });
-    if (res.ok) {
-      cargarMisEventos();
-    } else {
-      const data = await res.json();
-      alert(data.message);
-    }
+  // ---------- Eliminar evento con confirmación ----------
+  let eventoPorEliminar = null;
+  let pasoConfirmar = 'confirmar';   // 'confirmar' | 'listo'
+
+  const modalConfirmar = document.getElementById('modalConfirmar');
+  const confirmTitulo = document.getElementById('confirmTitulo');
+  const confirmTexto = document.getElementById('confirmTexto');
+  const btnConfirmCancelar = document.getElementById('confirmCancelar');
+  const btnConfirmAceptar = document.getElementById('confirmAceptar');
+
+  function eliminarEvento(id) {
+    const ev = eventosCache[id];
+    eventoPorEliminar = id;
+    pasoConfirmar = 'confirmar';
+
+    confirmTitulo.textContent = '¿Eliminar evento?';
+    confirmTexto.textContent = `Vas a eliminar "${ev ? ev.name : 'este evento'}". Esta acción no se puede deshacer.`;
+    btnConfirmCancelar.style.display = '';
+    btnConfirmAceptar.textContent = 'Eliminar';
+    btnConfirmAceptar.disabled = false;
+    modalConfirmar.classList.add('open');
   }
+
+  function cerrarConfirmar() {
+    modalConfirmar.classList.remove('open');
+    eventoPorEliminar = null;
+  }
+
+  btnConfirmCancelar.addEventListener('click', cerrarConfirmar);
+
+  btnConfirmAceptar.addEventListener('click', async () => {
+    // Segundo paso: el evento ya se eliminó, solo cerramos
+    if (pasoConfirmar === 'listo') { cerrarConfirmar(); return; }
+
+    btnConfirmAceptar.disabled = true;
+    try {
+      const res = await fetch(`/api/events/${eventoPorEliminar}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${session.token}` }
+      });
+
+      if (res.ok) {
+        pasoConfirmar = 'listo';
+        confirmTitulo.textContent = 'Evento eliminado correctamente';
+        confirmTexto.textContent = 'El evento ya no aparece en la lista.';
+        btnConfirmCancelar.style.display = 'none';
+        btnConfirmAceptar.textContent = 'Aceptar';
+        cargarMisEventos();
+      } else {
+        const data = await res.json();
+        confirmTexto.textContent = data.message || 'No se pudo eliminar el evento.';
+      }
+    } catch (err) {
+      console.error(err);
+      confirmTexto.textContent = 'No hay conexión con el servidor. Inténtalo de nuevo.';
+    }
+    btnConfirmAceptar.disabled = false;
+  });
+
+  // clic en el fondo oscuro y Escape cierran la confirmación
+  modalConfirmar.addEventListener('click', (e) => {
+    if (e.target === modalConfirmar) cerrarConfirmar();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && modalConfirmar.classList.contains('open')) cerrarConfirmar();
+  });
 
   async function verReporte(id) {
     const res = await fetch(`/api/events/${id}/reports`, {

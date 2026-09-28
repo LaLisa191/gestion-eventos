@@ -1,0 +1,82 @@
+#eventos { scroll-margin-top: 100px; }
+
+/* ---------- Modal crear evento: ubicación, scroll y validación ---------- */
+.modal-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(6, 5, 12, 0.72);
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  overflow: hidden;
+}
+
+.modal-backdrop.open { display: flex; }
+
+.modal-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  max-width: 440px;
+  width: 100%;
+  max-height: calc(100dvh - 40px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  position: relative;
+}
+
+/* Bloquea el scroll de la página mientras el modal está abierto */
+body.modal-open { overflow: hidden; }
+html:has(body.modal-open) { overflow: hidden; }
+
+/* Campos con error */
+.modal-card .campo-error {
+  border-color: var(--error) !important;
+  background: var(--error-bg) !important;
+}
+
+.state-box ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+/* Foto del evento en el hero */
+.hero-visual .hero-event-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.hero-visual.con-foto svg { display: none; }
+
+/* Degradado oscuro abajo para que se lea la tarjeta */
+.hero-visual.con-foto::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(to top, rgba(16, 13, 27, 0.75), transparent 60%);
+  pointer-events: none;
+}
+
+.hero-visual .preview-card { z-index: 2; }
+
+.hero-visual.con-foto .preview-card {
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
+  padding: 16px 20px;
+}
+
+.hero-visual.con-foto .preview-card h3 { font-size: 18px; }
+
+.hero-visual.con-foto .preview-card .meta { margin-bottom: 12px; }
+
+/* Oculta la ilustración hasta saber si el evento tiene foto */
+.hero-visual:not(.listo) svg { visibility: hidden; }
+

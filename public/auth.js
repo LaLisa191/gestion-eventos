@@ -166,3 +166,9 @@ function esCorreoValido(correo) {
   const dominio = correo.slice(arroba + 1);
   return dominio.includes('.') && !/\s/.test(correo);
 }
+function formatearFechaHora(fechaISO) {
+  const d = new Date(fechaISO);
+  const fecha = d.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' });
+  const hora = d.toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' });
+  return `${fecha} · ${hora}`;
+}

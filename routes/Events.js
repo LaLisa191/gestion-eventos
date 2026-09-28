@@ -79,7 +79,7 @@ router.delete('/:id', verifyToken, isOrganizer, async (req, res) => {
 
 router.get('/', async (req, res) => {
   try {
-    const events = await Event.find().sort({ date: 1 });
+    const events = await Event.find().sort({ _id: -1 });
     const withCapacity = await Promise.all(events.map(async (event) => {
       const registered = await Registration.countDocuments({ eventId: event._id, status: 'confirmed' });
       return { ...event.toObject(), availableSpots: event.maxCapacity - registered };

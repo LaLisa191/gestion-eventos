@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Eventos — Universidad de Cartagena</title>
 <link rel="stylesheet" href="styles.css">
-<link rel="stylesheet" href="styles-hero-v2.css">
 <link rel="stylesheet" href="styles-portal.css">
 <link rel="stylesheet" href="styles-compare.css">
 <link rel="stylesheet" href="styles-extra.css">
@@ -13,6 +12,7 @@
 <link rel="stylesheet" href="styles-favoritos.css">
 <link rel="stylesheet" href="styles-footer.css">
 <link rel="stylesheet" href="styles-imagenes.css">
+<link rel="stylesheet" href="styles-modal.css">
 </head>
 <body>
 
@@ -112,6 +112,9 @@
     <label for="ceFecha">Fecha</label>
     <input id="ceFecha" type="date">
 
+    <label for="ceHora">Hora</label>
+    <input id="ceHora" type="time">
+
     <label for="ceLugar">Lugar</label>
     <input id="ceLugar" placeholder="Auditorio central">
 
@@ -142,6 +145,7 @@
   let soloFavoritos = false;
   let paginaActual = 1;
   const eventosPorPagina = 6;
+  let yaPosicionado = false;
 
   function etiquetaModalidad(m) {
     return m === 'virtual' ? 'Virtual' : 'Presencial';
@@ -162,20 +166,35 @@
     }
 
     grid.innerHTML = events.map(ev => `
-      <div class="event-card">
+    <div class="event-card">
         ${imagenTarjeta(ev)}
+
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
-          <h3>${ev.name}</h3>
-          <button class="fav-btn ${favoritosIds.has(ev._id) ? 'active' : ''}" onclick="toggleFavorito('${ev._id}', this)">${favoritosIds.has(ev._id) ? '♥' : '♡'}</button>
+            <h3>${ev.name}</h3>
+
+            <button class="fav-btn ${favoritosIds.has(ev._id) ? 'active' : ''}"
+                    onclick="toggleFavorito('${ev._id}', this)">
+                ${favoritosIds.has(ev._id) ? '♥' : '♡'}
+            </button>
         </div>
-        <div class="meta">${new Date(ev.date).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })} · ${ev.location} · ${etiquetaModalidad(ev.modality)}</div>
-        <div class="cupo-bar-track"><div class="cupo-bar-fill" style="width:${100 - (ev.availableSpots / ev.maxCapacity * 100)}%"></div></div>
-        <div class="cupo-label"><span>${ev.availableSpots} cupos libres</span><span>${ev.maxCapacity} en total</span></div>
+        <div class="meta">
+            ${formatearFechaHora(ev.date)} · ${ev.location} · ${etiquetaModalidad(ev.modality)}
+        </div>
+        <div class="cupo-bar-track">
+            <div class="cupo-bar-fill"
+                 style="width:${100 - (ev.availableSpots / ev.maxCapacity * 100)}%">
+            </div>
+        </div>
+        <div class="cupo-label">
+            <span>${ev.availableSpots} cupos libres</span>
+            <span>${ev.maxCapacity} en total</span>
+        </div>
         ${ev.availableSpots > 0
-          ? `<a class="btn-primary" href="register.html?event=${ev._id}">Registrarme</a>`
-          : `<button class="btn-primary" disabled>Cupo lleno</button>`}
-      </div>
-    `).join('');
+            ? `<a class="btn-primary" href="register.html?event=${ev._id}">Registrarme</a>`
+            : `<button class="btn-primary" disabled>Cupo lleno</button>`
+        }
+    </div>
+`).join('');
   }
 
   function filtrarYPintar() {
@@ -229,7 +248,7 @@
       params.delete('modality');
       document.getElementById('subtituloSeccion').textContent = 'Consulta los eventos disponibles e inscríbete fácilmente en actividades presenciales y virtuales.';
     }
-    history.replaceState(null, '', `index.html${params.toString() ? '?' + params.toString() : ''}#eventos`);
+    history.replaceState(null, '', `${location.pathname}${params.toString() ? '?' + params.toString() : ''}${location.hash}`);
     filtrarYPintar();
   }
 
@@ -282,24 +301,83 @@
   async function cargarEventos() {
     await cargarFavoritos();
     const res = await fetch('/api/events');
-    eventosCache = await res.json();
+    const lista = await res.json();
+
+// Fecha de creación: usa createdAt si existe; si no, la saca del _id de Mongo
+const creadoEn = (ev) => ev.createdAt
+  ? new Date(ev.createdAt).getTime()
+  : Number.parseInt(ev._id.substring(0, 8), 16) * 1000;
+
+eventosCache = lista.sort((a, b) => creadoEn(b) - creadoEn(a));
 
     if (eventosCache.length === 0) {
-      document.getElementById('grid').innerHTML = `<div class="empty-state">Todavía no hay eventos publicados.</div>`;
+      document.getElementById('grid').innerHTML =
+        `<div class="empty-state">Todavía no hay eventos publicados.</div>`;
     } else {
-      const proximo = [...eventosCache].sort((a, b) => new Date(a.date) - new Date(b.date))[0];
+      const proximo = [...eventosCache]
+        .sort((a, b) => new Date(a.date) - new Date(b.date))[0];
       const card = document.getElementById('previewCard');
+
       card.style.display = 'block';
+
+      // Foto del evento más próximo en el hero (si tiene)
+     const visual = document.querySelector('.hero-visual');
+     let imgHero = document.getElementById('heroImagen');
+
+     if (proximo.imageUrl) {
+       if (!imgHero) {
+    imgHero = document.createElement('img');
+    imgHero.id = 'heroImagen';
+    imgHero.className = 'hero-event-image';
+    visual.prepend(imgHero);
+  }
+   imgHero.src = proximo.imageUrl;
+   imgHero.alt = proximo.name;
+   visual.classList.add('con-foto');
+    } else {
+
+  if (imgHero) imgHero.remove();
+  visual.classList.remove('con-foto');
+}
       document.getElementById('previewNombre').textContent = proximo.name;
       document.getElementById('previewMeta').textContent =
-        `${new Date(proximo.date).toLocaleDateString('es-CO', { day: 'numeric', month: 'long' })} · ${proximo.location}`;
-      document.getElementById('previewBarra').style.width = `${100 - (proximo.availableSpots / proximo.maxCapacity * 100)}%`;
-      document.getElementById('previewCupoTexto').textContent = `${proximo.availableSpots} cupos disponibles`;
-      document.getElementById('previewCupoMax').textContent = proximo.maxCapacity;
+        `${formatearFechaHora(proximo.date)} · ${proximo.location}`;
+      document.getElementById('previewBarra').style.width =
+        `${100 - (proximo.availableSpots / proximo.maxCapacity * 100)}%`;
+      document.getElementById('previewCupoTexto').textContent =
+        `${proximo.availableSpots} cupos disponibles`;
+      document.getElementById('previewCupoMax').textContent =
+        proximo.maxCapacity;
     }
+  document.querySelector('.hero-visual').classList.add('listo');
 
     const modalidadInicial = new URLSearchParams(location.search).get('modality');
     aplicarFiltro(modalidadInicial);
+
+
+        // Reposiciona en la sección una vez que la página terminó de acomodarse
+    if (!yaPosicionado) {
+      yaPosicionado = true;
+      if (location.hash === '#eventos') {
+        requestAnimationFrame(() =>
+          document.getElementById('eventos').scrollIntoView()
+        );
+      }
+    }
+  }
+
+  // ---------- Modal crear evento ----------
+  function abrirModal() {
+    const backdrop = document.getElementById('modalCrear');
+    backdrop.classList.add('open');
+    document.body.classList.add('modal-open');
+    backdrop.querySelector('.modal-card').scrollTop = 0;
+    backdrop.querySelectorAll('.campo-error').forEach(el => el.classList.remove('campo-error'));
+  }
+
+  function cerrarModal() {
+    document.getElementById('modalCrear').classList.remove('open');
+    document.body.classList.remove('modal-open');
   }
 
   if (session && session.user.userType === 'organizer') {
@@ -307,51 +385,123 @@
     boton.style.display = 'inline-flex';
     boton.addEventListener('click', (e) => {
       e.preventDefault();
-      document.getElementById('ceNombre').value = '';
-      document.getElementById('ceDescripcion').value = '';
-      document.getElementById('ceFecha').value = '';
-      document.getElementById('ceLugar').value = '';
+      ['ceNombre','ceDescripcion','ceFecha','ceHora','ceLugar','ceCupo','ceImagen']
+        .forEach(id => document.getElementById(id).value = '');
       document.getElementById('ceModalidad').value = 'in-person';
-      document.getElementById('ceCupo').value = '';
-      document.getElementById('ceImagen').value = '';
       document.getElementById('estadoModal').innerHTML = '';
-      document.getElementById('modalCrear').classList.add('open');
+      abrirModal();
     });
   }
 
-  document.getElementById('cerrarModal').addEventListener('click', () => {
-    document.getElementById('modalCrear').classList.remove('open');
+  document.getElementById('cerrarModal').addEventListener('click', cerrarModal);
+
+  // clic en el fondo oscuro cierra el modal
+  document.getElementById('modalCrear').addEventListener('click', (e) => {
+    if (e.target.id === 'modalCrear') cerrarModal();
   });
 
+  // Escape cierra el modal
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') cerrarModal();
+  });
+
+  // ---------- Validación del formulario ----------
+  const camposCrear = [
+    { id: 'ceNombre',      etiqueta: 'Nombre del evento' },
+    { id: 'ceDescripcion', etiqueta: 'Descripción' },
+    { id: 'ceFecha',       etiqueta: 'Fecha' },
+    { id: 'ceHora',        etiqueta: 'Hora' },
+    { id: 'ceLugar',       etiqueta: 'Lugar' },
+    { id: 'ceModalidad',   etiqueta: 'Modalidad' },
+    { id: 'ceCupo',        etiqueta: 'Cupo máximo' }
+  ];
+
+  function validarFormularioCrear() {
+    const problemas = [];
+    let primerInvalido = null;
+
+    camposCrear.forEach(({ id, etiqueta }) => {
+      const el = document.getElementById(id);
+      const valor = el.value.trim();
+      let mensaje = null;
+
+      if (!valor) {
+        mensaje = `${etiqueta} es obligatorio`;
+      } else if (id === 'ceCupo' && (!Number.isInteger(Number(valor)) || Number(valor) < 1)) {
+        mensaje = 'El cupo máximo debe ser un número entero mayor a 0';
+      }
+
+      el.classList.toggle('campo-error', !!mensaje);
+      if (mensaje) {
+        problemas.push(mensaje);
+        if (!primerInvalido) primerInvalido = el;
+      }
+    });
+
+    return { problemas, primerInvalido };
+  }
+
+  // Quita el borde rojo apenas el usuario corrige el campo
+  document.querySelectorAll('#modalCrear input, #modalCrear textarea, #modalCrear select')
+    .forEach(el => {
+      el.addEventListener('input', () => el.classList.remove('campo-error'));
+    });
+
+  // ---------- Crear evento ----------
   async function crearEvento() {
+    const estado = document.getElementById('estadoModal');
+
+    const { problemas, primerInvalido } = validarFormularioCrear();
+    if (problemas.length > 0) {
+      estado.innerHTML = `
+        <div class="state-box error">
+          Revisa el formulario:
+          <ul>${problemas.map(p => `<li>${p}</li>`).join('')}</ul>
+        </div>`;
+      primerInvalido.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      primerInvalido.focus({ preventScroll: true });
+      return;
+    }
+
+    estado.innerHTML = '';
     const formData = new FormData();
-    formData.append('name', document.getElementById('ceNombre').value);
-    formData.append('description', document.getElementById('ceDescripcion').value);
-    formData.append('date', document.getElementById('ceFecha').value);
-    formData.append('location', document.getElementById('ceLugar').value);
+    const fecha = document.getElementById('ceFecha').value;
+    const hora = document.getElementById('ceHora').value;
+    formData.append('name', document.getElementById('ceNombre').value.trim());
+    formData.append('description', document.getElementById('ceDescripcion').value.trim());
+    formData.append('date', `${fecha}T${hora}`);
+    formData.append('location', document.getElementById('ceLugar').value.trim());
     formData.append('modality', document.getElementById('ceModalidad').value);
     formData.append('maxCapacity', document.getElementById('ceCupo').value);
 
     const archivo = document.getElementById('ceImagen').files[0];
     if (archivo) formData.append('image', archivo);
 
-    const res = await fetch('/api/events', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${session.token}` },
-      body: formData
-    });
-    const data = await res.json();
+    try {
+      const res = await fetch('/api/events', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${session.token}` },
+        body: formData
+      });
+      const data = await res.json();
 
-    if (res.ok) {
-      document.getElementById('modalCrear').classList.remove('open');
-      cargarEventos();
-    } else {
-      document.getElementById('estadoModal').innerHTML = `<div class="state-box error">${data.message}</div>`;
+      if (res.ok) {
+        cerrarModal();
+        cargarEventos();
+      } else {
+        console.error('Error al crear evento:', data.message);
+        estado.innerHTML = `<div class="state-box error">No se pudo crear el evento. Revisa los datos e inténtalo de nuevo.</div>`;
+      }
+    } catch (err) {
+      console.error(err);
+      estado.innerHTML = `<div class="state-box error">No hay conexión con el servidor. Inténtalo de nuevo.</div>`;
     }
   }
 
   cargarEventos();
 
+  // Si tarda demasiado o falla, muestra la ilustración de todos modos
+  setTimeout(() => document.querySelector('.hero-visual').classList.add('listo'), 4000);
 </script>
 <div id="footer-placeholder"></div>
 </body>
