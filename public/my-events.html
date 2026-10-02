@@ -17,8 +17,14 @@
 <div id="header-placeholder"></div>
 
 <main class="wrap" style="padding-top:48px;padding-bottom:80px">
-  <h2 class="section-title">Mis eventos</h2>
-  <p class="section-sub" id="subtitulo">Los eventos a los que te has inscrito.</p>
+  <div class="section-header-row">
+    <div>
+      <h2 class="section-title">Mis eventos</h2>
+      <p class="section-sub" id="subtitulo" style="margin-bottom:0">Los eventos a los que te has inscrito.</p>
+    </div>
+    <!-- Oculto por defecto; aparece solo si hay inscripciones canceladas -->
+    <button class="btn-secondary" id="btnLimpiar" style="display:none" onclick="pedirLimpieza()"></button>
+  </div>
 
   <!-- Estado de error: Se muestra únicamente si un visitante sin sesión accede a la ruta -->
   <div id="necesitaSesion" style="display:none">
@@ -30,15 +36,15 @@
   <div class="events-grid" id="grid"></div>
 </main>
 
-<!-- Modal: confirmar cancelación de registro -->
+<!-- Modal de confirmación: se reutiliza para cancelar, eliminar una y limpiar todas -->
 <div class="modal-backdrop" id="modalCancelar">
   <div class="confirm-card" role="alertdialog" aria-modal="true"
        aria-labelledby="cancelTitulo" aria-describedby="cancelTexto">
-    <h3 id="cancelTitulo">¿Cancelar registro?</h3>
+    <h3 id="cancelTitulo"></h3>
     <p id="cancelTexto"></p>
     <div class="confirm-actions">
       <button class="btn-secondary" id="cancelVolver">Volver</button>
-      <button class="btn-primary" id="cancelAceptar">Cancelar registro</button>
+      <button class="btn-primary" id="cancelAceptar"></button>
     </div>
   </div>
 </div>
@@ -51,6 +57,13 @@
     let inscripcionesCache = {};
 
     // --- Utilidades de formato ---
+    // Escapa texto del usuario antes de meterlo en innerHTML
+    function esc(s = '') {
+        return String(s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
     function etiquetaModalidad(m) {
         return m === 'virtual' ? 'Virtual' : 'Presencial';
     }
@@ -71,9 +84,7 @@
             : '<span class="estado-inscripcion">Confirmado</span>';
     }
 
-    // Retorna el HTML de la imagen. 
-    // UX: Utiliza el evento 'onerror' para ocultar la imagen y mostrar un fondo gris (placeholder) 
-    // en caso de que la URL de la imagen esté rota o el servidor de imágenes falle.
+    // Si la imagen falla, se oculta y se muestra el placeholder
     function imagenTarjeta(evento) {
         const imagen = evento.imageUrl;
 
@@ -84,8 +95,8 @@
         return `
             <img
                 class="event-image"
-                src="${imagen}"
-                alt="Imagen de ${evento.name}"
+                src="${esc(imagen)}"
+                alt="Imagen de ${esc(evento.name)}"
                 loading="lazy"
                 onerror="this.style.display='none'; this.nextElementSibling.style.display='block'"
             >
@@ -95,7 +106,6 @@
 
     // --- Lógica principal ---
     async function cargarMisEventos() {
-        // Validación de seguridad local
         if (!session) {
             document.getElementById('necesitaSesion').style.display = 'block';
             return;
@@ -106,19 +116,15 @@
         try {
             grid.innerHTML = '<div class="empty-state">Cargando tus eventos...</div>';
 
-            // 1. Obtener el historial de inscripciones del usuario actual
+            // 1. Historial de inscripciones del usuario
             const res = await fetch('/api/users/me/registrations', {
-                headers: {
-                    'Authorization': `Bearer ${session.token}`
-                }
+                headers: { 'Authorization': `Bearer ${session.token}` }
             });
 
             if (!res.ok) throw new Error('No se pudieron cargar tus inscripciones.');
             const registrations = await res.json();
 
-            // 2. Obtener la lista general de eventos.
-            // ¿Por qué? Porque la información dentro de "registrations" podría tener datos estáticos.
-            // Al cruzarla con la lista general en vivo, garantizamos que los cupos disponibles mostrados sean reales y actuales.
+            // 2. Lista general de eventos para mostrar cupos reales y actuales
             let eventos = [];
             try {
                 const eventosRes = await fetch('/api/events');
@@ -127,18 +133,27 @@
                 console.warn('No se pudo consultar la disponibilidad de cupos:', error);
             }
 
-            // Convertir el array de eventos a un Mapa (Diccionario) para búsquedas instantáneas por ID
             const eventosPorId = new Map(
                 eventos.map(ev => [String(ev._id), ev])
             );
 
-            // Filtrar inscripciones corruptas que no tengan el objeto eventId
+            // Descarta inscripciones cuyo evento ya no existe
             const conEvento = registrations.filter(r => r.eventId);
 
-        inscripcionesCache = {};
-        conEvento.forEach(r => {
-        inscripcionesCache[r._id] = { eventId: r.eventId._id, name: r.eventId.name };
-       });
+            // Caché de inscripciones + botón "Limpiar cancelados"
+            inscripcionesCache = {};
+            conEvento.forEach(r => {
+                inscripcionesCache[r._id] = {
+                    eventId: r.eventId._id,
+                    name: r.eventId.name,
+                    status: r.status
+                };
+            });
+
+            const nCancelados = conEvento.filter(r => r.status === 'cancelled').length;
+            const btnLimpiar = document.getElementById('btnLimpiar');
+            btnLimpiar.style.display = nCancelados ? 'inline-flex' : 'none';
+            btnLimpiar.textContent = `Limpiar cancelados (${nCancelados})`;
 
             if (conEvento.length === 0) {
                 grid.innerHTML = `
@@ -154,18 +169,13 @@
                 return;
             }
 
-            // Generar el HTML mapeando cada registro a su respectiva tarjeta
             grid.innerHTML = conEvento.map(r => {
                 const ev = r.eventId;
-
-                // Reemplaza los datos del evento anidado por los datos en vivo obtenidos del catálogo general
                 const eventoActualizado = eventosPorId.get(String(ev._id)) || ev;
 
                 const capacidad = Number(eventoActualizado.maxCapacity);
                 const disponibles = eventoActualizado.availableSpots;
 
-                // Cálculo seguro del porcentaje de ocupación para la barra de progreso 
-                // Evita valores NaN, Infinity o negativos si los datos de la DB llegan mal
                 const porcentaje = Number.isFinite(Number(disponibles)) && capacidad > 0
                     ? Math.max(0, Math.min(100, ((capacidad - Number(disponibles)) / capacidad) * 100))
                     : 0;
@@ -181,13 +191,13 @@
                         ${imagenTarjeta(ev)}
 
                         <div class="evento-titulo-fila">
-                            <h3>${ev.name}</h3>
+                            <h3>${esc(ev.name)}</h3>
                             ${etiquetaEstado(r.status)}
                         </div>
 
                         <div class="meta">
                             ${formatearFechaHora(ev.date)}
-                            · ${ev.location}
+                            · ${esc(ev.location)}
                             · ${etiquetaModalidad(ev.modality)}
                         </div>
 
@@ -201,12 +211,21 @@
                             </div>
                         ` : ''}
 
-                        <!-- Solo permite cancelar si la inscripción sigue activa -->
+                        <!-- Confirmada: se puede cancelar -->
                         ${r.status === 'confirmed' ? `
                             <button
                                 class="btn-primary btn-cancelar"
                                 onclick="pedirCancelacion('${r._id}')">
                                 Cancelar registro
+                            </button>
+                        ` : ''}
+
+                        <!-- Cancelada: se puede quitar de la lista -->
+                        ${r.status === 'cancelled' ? `
+                            <button
+                                class="btn-quitar"
+                                onclick="pedirEliminacion('${r._id}')">
+                                Eliminar de mi lista
                             </button>
                         ` : ''}
                     </div>
@@ -217,90 +236,130 @@
             console.error(error);
             grid.innerHTML = `
                 <div class="state-box error">
-                    ${error.message || 'Ocurrió un error al cargar tus eventos.'}
+                    ${esc(error.message) || 'Ocurrió un error al cargar tus eventos.'}
                 </div>
             `;
         }
     }
 
-// ---------- Cancelar registro con confirmación ----------
-let registroPorCancelar = null;   // { eventId, registrationId }
-// 'confirmar' = pide permiso | 'listo' = la API respondió ok y se muestra el éxito
-let pasoCancelar = 'confirmar';
+    // ---------- Modal de confirmación (cancelar / quitar / limpiar) ----------
+    let accionPendiente = null;
+    // 'confirmar' = pide permiso | 'listo' = la API respondió ok y se muestra el éxito
+    let pasoModal = 'confirmar';
 
-const modalCancelar = document.getElementById('modalCancelar');
-const cancelTitulo = document.getElementById('cancelTitulo');
-const cancelTexto = document.getElementById('cancelTexto');
-const btnCancelVolver = document.getElementById('cancelVolver');
-const btnCancelAceptar = document.getElementById('cancelAceptar');
+    const modalCancelar = document.getElementById('modalCancelar');
+    const cancelTitulo = document.getElementById('cancelTitulo');
+    const cancelTexto = document.getElementById('cancelTexto');
+    const btnCancelVolver = document.getElementById('cancelVolver');
+    const btnCancelAceptar = document.getElementById('cancelAceptar');
 
-// Paso 1: abrir el modal
-function pedirCancelacion(registrationId) {
-    const insc = inscripcionesCache[registrationId];
-    if (!insc) return;
+    function abrirConfirmacion(accion) {
+        accionPendiente = accion;
+        pasoModal = 'confirmar';
+        cancelTitulo.textContent = accion.titulo;
+        cancelTexto.textContent = accion.texto;
+        btnCancelVolver.style.display = '';
+        btnCancelAceptar.textContent = accion.textoBoton;
+        btnCancelAceptar.disabled = false;
+        modalCancelar.classList.add('open');
+        document.body.classList.add('modal-open');
+    }
 
-    registroPorCancelar = { eventId: insc.eventId, registrationId };
-    pasoCancelar = 'confirmar';
+    function cerrarCancelar() {
+        modalCancelar.classList.remove('open');
+        document.body.classList.remove('modal-open');
+        accionPendiente = null;
+    }
 
-    cancelTitulo.textContent = '¿Cancelar registro?';
-    cancelTexto.textContent = `Vas a cancelar tu inscripción a "${insc.name}". Esta acción no se puede deshacer.`;
-    btnCancelVolver.style.display = '';
-    btnCancelAceptar.textContent = 'Cancelar registro';
-    btnCancelAceptar.disabled = false;
-    modalCancelar.classList.add('open');
-    document.body.classList.add('modal-open');
-}
+    function pedirCancelacion(registrationId) {
+        const insc = inscripcionesCache[registrationId];
+        if (!insc) return;
+        abrirConfirmacion({
+            tipo: 'cancelar', eventId: insc.eventId, registrationId,
+            titulo: '¿Cancelar registro?',
+            texto: `Vas a cancelar tu inscripción a "${insc.name}". Esta acción no se puede deshacer.`,
+            textoBoton: 'Cancelar registro',
+            exito: { titulo: 'Registro cancelado correctamente', texto: 'Tu inscripción ya aparece como cancelada.' }
+        });
+    }
 
-function cerrarCancelar() {
-    modalCancelar.classList.remove('open');
-    document.body.classList.remove('modal-open');
-    registroPorCancelar = null;
-}
+    function pedirEliminacion(registrationId) {
+        const insc = inscripcionesCache[registrationId];
+        if (!insc) return;
+        abrirConfirmacion({
+            tipo: 'quitar', eventId: insc.eventId, registrationId,
+            titulo: '¿Eliminar de tu lista?',
+            texto: `"${insc.name}" dejará de aparecer en Mis eventos. Esta acción no se puede deshacer.`,
+            textoBoton: 'Eliminar',
+            exito: { titulo: 'Eliminado correctamente', texto: 'El evento ya no aparece en tu lista.' }
+        });
+    }
 
-btnCancelVolver.addEventListener('click', cerrarCancelar);
+    function pedirLimpieza() {
+        const n = Object.values(inscripcionesCache).filter(i => i.status === 'cancelled').length;
+        if (n === 0) return;
+        abrirConfirmacion({
+            tipo: 'limpiar',
+            titulo: '¿Limpiar cancelados?',
+            texto: `Se eliminarán ${n} ${n === 1 ? 'inscripción cancelada' : 'inscripciones canceladas'} de tu lista. Esta acción no se puede deshacer.`,
+            textoBoton: 'Limpiar',
+            exito: { titulo: 'Lista limpia', texto: 'Se eliminaron tus inscripciones canceladas.' }
+        });
+    }
 
-// Paso 2: enviar la cancelación y pasar a estado 'listo'
-btnCancelAceptar.addEventListener('click', async () => {
-    if (pasoCancelar === 'listo') { cerrarCancelar(); return; }
-    if (!registroPorCancelar || !session) return;
+    // Cada acción llama a su ruta del backend
+    function peticionDeAccion(a) {
+        const headers = { 'Authorization': `Bearer ${session.token}` };
 
-    btnCancelAceptar.disabled = true;   // evita doble clic
-    btnCancelAceptar.textContent = 'Cancelando...';
+        if (a.tipo === 'cancelar') {
+            return fetch(`/api/events/${a.eventId}/registrations/${a.registrationId}/cancel`, { method: 'PATCH', headers });
+        }
+        if (a.tipo === 'quitar') {
+            return fetch(`/api/events/${a.eventId}/registrations/${a.registrationId}`, { method: 'DELETE', headers });
+        }
+        // 'limpiar': borra todas las canceladas del usuario
+        return fetch('/api/users/me/registrations/cancelled', { method: 'DELETE', headers });
+    }
 
-    try {
-        const { eventId, registrationId } = registroPorCancelar;
-        const res = await fetch(
-            `/api/events/${eventId}/registrations/${registrationId}/cancel`,
-            { method: 'PATCH', headers: { 'Authorization': `Bearer ${session.token}` } }
-        );
+    btnCancelVolver.addEventListener('click', cerrarCancelar);
 
-        if (res.ok) {
-            pasoCancelar = 'listo';
-            cancelTitulo.textContent = 'Registro cancelado correctamente';
-            cancelTexto.textContent = 'Tu inscripción ya aparece como cancelada.';
-            btnCancelVolver.style.display = 'none';
-            btnCancelAceptar.textContent = 'Aceptar';
-            cargarMisEventos();   // refresca la lista de fondo
-        } else {
-            const data = await res.json().catch(() => ({}));
-            cancelTexto.textContent = data.message || 'No se pudo cancelar la inscripción.';
+    btnCancelAceptar.addEventListener('click', async () => {
+        if (pasoModal === 'listo') { cerrarCancelar(); return; }
+        if (!accionPendiente || !session) return;
+
+        btnCancelAceptar.disabled = true;   // evita doble clic
+        btnCancelAceptar.textContent = 'Procesando...';
+
+        try {
+            const res = await peticionDeAccion(accionPendiente);
+
+            if (res.ok) {
+                pasoModal = 'listo';
+                cancelTitulo.textContent = accionPendiente.exito.titulo;
+                cancelTexto.textContent = accionPendiente.exito.texto;
+                btnCancelVolver.style.display = 'none';
+                btnCancelAceptar.textContent = 'Aceptar';
+                cargarMisEventos();   // refresca la lista de fondo
+            } else {
+                const data = await res.json().catch(() => ({}));
+                cancelTexto.textContent = data.message || 'No se pudo completar la acción.';
+                btnCancelAceptar.textContent = 'Reintentar';
+            }
+        } catch (err) {
+            console.error(err);
+            cancelTexto.textContent = 'No hay conexión con el servidor. Inténtalo de nuevo.';
             btnCancelAceptar.textContent = 'Reintentar';
         }
-    } catch (err) {
-        console.error(err);
-        cancelTexto.textContent = 'No hay conexión con el servidor. Inténtalo de nuevo.';
-        btnCancelAceptar.textContent = 'Reintentar';
-    }
-    btnCancelAceptar.disabled = false;
-});
+        btnCancelAceptar.disabled = false;
+    });
 
-// Cerrar al hacer clic afuera o con Escape
-modalCancelar.addEventListener('click', (e) => {
-    if (e.target === modalCancelar) cerrarCancelar();
-});
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && modalCancelar.classList.contains('open')) cerrarCancelar();
-});
+    // Cerrar al hacer clic afuera o con Escape
+    modalCancelar.addEventListener('click', (e) => {
+        if (e.target === modalCancelar) cerrarCancelar();
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modalCancelar.classList.contains('open')) cerrarCancelar();
+    });
 
     // Inicializar la vista
     cargarMisEventos();

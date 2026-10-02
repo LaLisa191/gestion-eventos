@@ -15,3 +15,25 @@
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+/* ---------- botón "Eliminar de mi lista" (Mis eventos) ---------- */
+.event-card .btn-quitar {
+  width: 100%;
+  margin-top: auto;
+  justify-content: center;
+  display: inline-flex;
+  align-items: center;
+  background: transparent;
+  color: var(--error);
+  border: 1px solid var(--error);
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 14px;
+  padding: 11px 18px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.event-card .btn-quitar:hover {
+  background: var(--error-bg);
+}

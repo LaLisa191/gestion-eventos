@@ -73,6 +73,19 @@ router.get('/me/registrations', verifyToken, async (req, res) => {
   }
 });
 
+// Elimina todas las inscripciones canceladas del usuario autenticado
+router.delete('/me/registrations/cancelled', verifyToken, async (req, res) => {
+  try {
+    const result = await Registration.deleteMany({
+      participantId: req.user._id,
+      status: 'cancelled'
+    });
+    res.json({ deleted: result.deletedCount });
+  } catch (err) {
+    res.status(500).json({ message: errorMessage(err) });
+  }
+});
+
 router.put('/me', verifyToken, async (req, res) => {
   try {
     const { name, email, currentPassword, newPassword } = req.body;
