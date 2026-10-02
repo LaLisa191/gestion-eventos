@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Registro — evento</title>
 <link rel="stylesheet" href="styles.css">
-<link rel="stylesheet" href="styles-hero-v2.css">
 <link rel="stylesheet" href="styles-portal.css">
 <link rel="stylesheet" href="styles-extra.css">
 <link rel="stylesheet" href="styles-nav.css">
@@ -74,7 +73,7 @@
 
     document.getElementById('nombreEvento').textContent = ev.name;
     document.getElementById('metaEvento').textContent =
-      `${new Date(ev.date).toLocaleDateString('es-CO', { day: 'numeric', month: 'long' })} · ${ev.location}`;
+    `${formatearFechaHora(ev.date)} · ${ev.location}`;
     document.getElementById('barra').style.width = `${100 - (ev.availableSpots / ev.maxCapacity * 100)}%`;
     document.getElementById('cupoTexto').textContent = `${ev.availableSpots} cupos disponibles`;
     document.getElementById('cupoMax').textContent = `${ev.maxCapacity} en total`;

@@ -70,4 +70,32 @@ router.patch('/:registrationId/cancel', verifyToken, async (req, res) => {
   }
 });
 
+// Elimina del historial una inscripción CANCELADA (solo la del propio usuario)
+router.delete('/:registrationId', verifyToken, async (req, res) => {
+  try {
+    const { id, registrationId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id) || !mongoose.Types.ObjectId.isValid(registrationId)) {
+      return res.status(400).json({ message: 'Id inválido' });
+    }
+
+    const registration = await Registration.findOne({ _id: registrationId, eventId: id });
+    if (!registration) return res.status(404).json({ message: 'Registro no encontrado' });
+
+    if (String(registration.participantId) !== String(req.user._id)) {
+      return res.status(403).json({ message: 'No puedes eliminar un registro que no es tuyo' });
+    }
+
+    // Una inscripción confirmada se cancela primero; así no se pierde un cupo por accidente
+    if (registration.status !== 'cancelled') {
+      return res.status(400).json({ message: 'Solo puedes eliminar inscripciones canceladas' });
+    }
+
+    await registration.deleteOne();
+    res.json({ message: 'Registro eliminado' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 module.exports = router;

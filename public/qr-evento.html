@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>QR del Evento</title>
+  
+  <!-- Aquí enlazamos tu nuevo archivo CSS -->
+  <link rel="stylesheet" href="styles-qr.css">
+</head>
+<body>
+  <div class="card">
+    <h1 id="tituloEvento">Cargando evento...</h1>
+    <p>Escanea el código para acceder al registro.</p>
+
+    <div id="loading" class="estado-carga">Generando tu código QR...</div>
+    
+    <img id="qr" alt="Código QR del evento">
+    
+    <div id="error" class="estado-error"></div>
+  </div>
+
+  <script>
+    async function cargarQR() {
+      const qrImg = document.getElementById('qr');
+      const loading = document.getElementById('loading');
+      const errorDiv = document.getElementById('error');
+      const titulo = document.getElementById('tituloEvento');
+      
+      const urlParams = new URLSearchParams(window.location.search);
+      const eventId = urlParams.get('id');
+      const eventName = urlParams.get('nombre');
+
+      titulo.textContent = eventName ? `QR - ${eventName}` : 'Código de acceso';
+
+      if (!eventId) {
+        throw new Error('Falta el parámetro "id" en la URL.');
+      }
+
+      const respuesta = await fetch(`/api/events/qr/${eventId}/qr`);
+      const datos = await respuesta.json();
+
+      if (!respuesta.ok) {
+        throw new Error(datos.message || 'El servidor no pudo generar el QR.');
+      }
+
+      qrImg.src = datos.qr;
+      
+      qrImg.onload = () => {
+        loading.style.display = 'none';
+        qrImg.style.display = 'block';
+      };
+    }
+
+    cargarQR().catch(error => {
+      document.getElementById('loading').style.display = 'none';
+      const errorDiv = document.getElementById('error');
+      errorDiv.textContent = `⚠️ ${error.message}`;
+      errorDiv.style.display = 'block';
+    });
+  </script>
+</body>
+</html>

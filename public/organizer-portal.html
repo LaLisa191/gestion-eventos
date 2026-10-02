@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Mi portal — organizador</title>
 <link rel="stylesheet" href="styles.css">
-<link rel="stylesheet" href="styles-hero-v2.css">
 <link rel="stylesheet" href="styles-portal.css">
 <link rel="stylesheet" href="styles-extra.css">
 <link rel="stylesheet" href="styles-nav.css">
@@ -15,6 +14,7 @@
 </head>
 <body>
 
+<!-- Contenedor inyectado dinámicamente por auth.js -->
 <div id="header-placeholder"></div>
 
 <main class="wrap" style="padding-top:48px;padding-bottom:80px">
@@ -23,9 +23,11 @@
       <h2 class="section-title">Mi portal</h2>
       <p class="section-sub">Los eventos que has creado, con sus inscritos y reportes.</p>
     </div>
+    <!-- Botón oculto por defecto; se muestra solo si la validación de organizador es exitosa -->
     <a href="#" id="btnNuevoEvento" class="btn-primary" style="display:none">+ Nuevo evento</a>
   </div>
 
+  <!-- Estado de error: visible si un visitante o usuario normal intenta acceder -->
   <div id="necesitaSesion" style="display:none">
     <div class="state-box error" style="max-width:460px">Debes iniciar sesión como organizador para ver tu portal.</div>
     <a href="login.html?next=organizer-portal.html" class="btn-primary" style="margin-top:16px;display:inline-flex">Iniciar sesión</a>
@@ -34,7 +36,7 @@
   <div class="events-grid" id="grid"></div>
 </main>
 
-<!-- Modal: crear/editar evento -->
+<!-- Modal: crear/editar evento (Se reutiliza la misma estructura para ambas acciones) -->
 <div class="modal-backdrop" id="modalEvento">
   <div class="modal-card">
     <button class="modal-close" id="cerrarModalEvento" aria-label="Cerrar">×</button>
@@ -48,6 +50,9 @@
 
     <label for="ceFecha">Fecha</label>
     <input id="ceFecha" type="date">
+
+    <label for="ceHora">Hora</label>
+    <input id="ceHora" type="time">
 
     <label for="ceLugar">Lugar</label>
     <input id="ceLugar">
@@ -69,7 +74,7 @@
   </div>
 </div>
 
-<!-- Modal: reporte de asistencia -->
+<!-- Modal: reporte de asistencia (Lista en vivo de inscritos) -->
 <div class="modal-backdrop" id="modalReporte">
   <div class="modal-card" style="max-width:560px">
     <button class="modal-close" id="cerrarModalReporte" aria-label="Cerrar">×</button>
@@ -82,9 +87,10 @@
   </div>
 </div>
 
-<!-- Modal: confirmar eliminación -->
+<!-- Modal: confirmar eliminación (UX: Previene borrados accidentales) -->
 <div class="modal-backdrop" id="modalConfirmar">
-  <div class="confirm-card" role="dialog" aria-modal="true" aria-labelledby="confirmTitulo">
+  <div class="confirm-card" role="alertdialog" aria-modal="true"
+       aria-labelledby="confirmTitulo" aria-describedby="confirmTexto">
     <h3 id="confirmTitulo">¿Eliminar evento?</h3>
     <p id="confirmTexto"></p>
     <div class="confirm-actions">
@@ -97,9 +103,12 @@
 <script src="auth.js"></script>
 <script>
   const session = getSession();
-  let eventoEnEdicion = null;
+  let eventoEnEdicion = null; // null = Creación; ID = Edición
+  
+  // Cache local para evitar peticiones de red al abrir los modales de edición o eliminación
   let eventosCache = {};
 
+  // --- Utilidades de renderizado ---
   function etiquetaModalidad(m) { return m === 'virtual' ? 'Virtual' : 'Presencial'; }
   function etiquetaEstado(estado) {
     const nombres = { active: 'Activo', cancelled: 'Cancelado', finished: 'Finalizado' };
@@ -111,7 +120,9 @@
       : `<div class="event-image-placeholder"></div>`;
   }
 
+  // --- Lógica Principal del Portal ---
   async function cargarMisEventos() {
+    // Protección de ruta estricta: Solo usuarios con rol 'organizer' pueden acceder
     if (!session || session.user.userType !== 'organizer') {
       document.getElementById('necesitaSesion').style.display = 'block';
       return;
@@ -119,11 +130,14 @@
 
     document.getElementById('btnNuevoEvento').style.display = 'inline-flex';
 
+    // Obtiene todos los eventos y filtra en el cliente los que pertenecen al organizador actual
     const res = await fetch('/api/events');
     const events = await res.json();
     const mios = events.filter(ev => ev.organizerId === session.user.id);
+    
     const grid = document.getElementById('grid');
 
+    // Popular la caché local para tener acceso rápido a los detalles de cada evento
     eventosCache = {};
     mios.forEach(ev => { eventosCache[ev._id] = ev; });
 
@@ -139,7 +153,7 @@
           <h3>${ev.name}</h3>
           <span class="status-pill">${etiquetaEstado(ev.status)}</span>
         </div>
-        <div class="meta">${new Date(ev.date).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })} · ${ev.location} · ${etiquetaModalidad(ev.modality)}</div>
+        <div class="meta">${formatearFechaHora(ev.date)} · ${ev.location} · ${etiquetaModalidad(ev.modality)}</div>
         <div class="cupo-bar-track"><div class="cupo-bar-fill" style="width:${100 - (ev.availableSpots / ev.maxCapacity * 100)}%"></div></div>
         <div class="cupo-label"><span>${ev.availableSpots} cupos libres</span><span>${ev.maxCapacity} en total</span></div>
         <div class="card-actions">
@@ -151,12 +165,16 @@
     `).join('');
   }
 
+  // --- Modal de Formulario (Crear/Editar) ---
+  
+  // Limpia el formulario para crear un evento desde cero
   function abrirCreacion() {
     eventoEnEdicion = null;
     document.getElementById('tituloModalEvento').textContent = 'Nuevo evento';
     document.getElementById('ceNombre').value = '';
     document.getElementById('ceDescripcion').value = '';
     document.getElementById('ceFecha').value = '';
+    document.getElementById('ceHora').value = '';
     document.getElementById('ceLugar').value = '';
     document.getElementById('ceModalidad').value = 'in-person';
     document.getElementById('ceCupo').value = '';
@@ -165,17 +183,24 @@
     document.getElementById('modalEvento').classList.add('open');
   }
 
+  // Precarga el formulario con los datos extraídos de eventosCache
   function abrirEdicion(id) {
     const ev = eventosCache[id];
     eventoEnEdicion = ev._id;
     document.getElementById('tituloModalEvento').textContent = 'Editar evento';
     document.getElementById('ceNombre').value = ev.name;
     document.getElementById('ceDescripcion').value = ev.description || '';
+    
+    // Separa el ISO String ("2023-10-15T14:30:00Z") en fecha y hora para los inputs nativos
     document.getElementById('ceFecha').value = ev.date ? ev.date.substring(0, 10) : '';
+    document.getElementById('ceHora').value = ev.date ? ev.date.substring(11, 16) : '';
+    
     document.getElementById('ceLugar').value = ev.location;
     document.getElementById('ceModalidad').value = ev.modality || 'in-person';
     document.getElementById('ceCupo').value = ev.maxCapacity;
     document.getElementById('ceImagen').value = '';
+    
+    // Alerta contextual si el evento ya posee imagen
     document.getElementById('estadoModalEvento').innerHTML = ev.imageUrl
       ? '<div class="meta" style="color:var(--text-muted);font-size:13px;margin-top:8px">Ya tiene una imagen. Elige un archivo solo si quieres reemplazarla.</div>'
       : '';
@@ -191,15 +216,23 @@
     document.getElementById('modalEvento').classList.remove('open');
   });
 
+  // Envía los datos a la API multiplexando entre Crear (POST) y Editar (PUT)
   async function guardarEvento() {
+    // Se requiere FormData (multipart/form-data) en lugar de JSON genérico 
+    // porque el formulario permite subir archivos binarios (imagen)
     const formData = new FormData();
     formData.append('name', document.getElementById('ceNombre').value);
     formData.append('description', document.getElementById('ceDescripcion').value);
-    formData.append('date', document.getElementById('ceFecha').value);
+    
+    const fecha = document.getElementById('ceFecha').value;
+    const hora = document.getElementById('ceHora').value || '00:00';
+    formData.append('date', `${fecha}T${hora}`); // Reconstruye formato ISO local
+    
     formData.append('location', document.getElementById('ceLugar').value);
     formData.append('modality', document.getElementById('ceModalidad').value);
     formData.append('maxCapacity', document.getElementById('ceCupo').value);
 
+    // Solo adjunta la imagen si el usuario seleccionó un archivo nuevo
     const archivo = document.getElementById('ceImagen').files[0];
     if (archivo) formData.append('image', archivo);
 
@@ -215,7 +248,7 @@
 
     if (res.ok) {
       document.getElementById('modalEvento').classList.remove('open');
-      cargarMisEventos();
+      cargarMisEventos(); // Refresca la UI al guardar
     } else {
       document.getElementById('estadoModalEvento').innerHTML = `<div class="state-box error">${data.message}</div>`;
     }
@@ -223,7 +256,10 @@
 
   // ---------- Eliminar evento con confirmación ----------
   let eventoPorEliminar = null;
-  let pasoConfirmar = 'confirmar';   // 'confirmar' | 'listo'
+  // Máquina de estados UI: 
+  // 'confirmar' = Pide permiso al usuario.
+  // 'listo' = La API respondió ok, el modal ahora muestra el mensaje de éxito.
+  let pasoConfirmar = 'confirmar';  
 
   const modalConfirmar = document.getElementById('modalConfirmar');
   const confirmTitulo = document.getElementById('confirmTitulo');
@@ -231,6 +267,7 @@
   const btnConfirmCancelar = document.getElementById('confirmCancelar');
   const btnConfirmAceptar = document.getElementById('confirmAceptar');
 
+  // Paso 1: Abrir modal advirtiendo al usuario
   function eliminarEvento(id) {
     const ev = eventosCache[id];
     eventoPorEliminar = id;
@@ -251,11 +288,12 @@
 
   btnConfirmCancelar.addEventListener('click', cerrarConfirmar);
 
+  // Paso 2: Procesar eliminación y pasar a estado 'listo'
   btnConfirmAceptar.addEventListener('click', async () => {
-    // Segundo paso: el evento ya se eliminó, solo cerramos
+    // Si ya estábamos en 'listo', el botón actúa solo para cerrar el modal
     if (pasoConfirmar === 'listo') { cerrarConfirmar(); return; }
 
-    btnConfirmAceptar.disabled = true;
+    btnConfirmAceptar.disabled = true; // Prevenir doble clic
     try {
       const res = await fetch(`/api/events/${eventoPorEliminar}`, {
         method: 'DELETE',
@@ -266,9 +304,9 @@
         pasoConfirmar = 'listo';
         confirmTitulo.textContent = 'Evento eliminado correctamente';
         confirmTexto.textContent = 'El evento ya no aparece en la lista.';
-        btnConfirmCancelar.style.display = 'none';
-        btnConfirmAceptar.textContent = 'Aceptar';
-        cargarMisEventos();
+        btnConfirmCancelar.style.display = 'none'; // Ocultar botón cancelar
+        btnConfirmAceptar.textContent = 'Aceptar'; // Cambiar label del botón principal
+        cargarMisEventos(); // Refrescar lista de fondo
       } else {
         const data = await res.json();
         confirmTexto.textContent = data.message || 'No se pudo eliminar el evento.';
@@ -280,7 +318,7 @@
     btnConfirmAceptar.disabled = false;
   });
 
-  // clic en el fondo oscuro y Escape cierran la confirmación
+  // UX de Accesibilidad: Cierra el modal de confirmación al hacer clic afuera o presionar Escape
   modalConfirmar.addEventListener('click', (e) => {
     if (e.target === modalConfirmar) cerrarConfirmar();
   });
@@ -288,6 +326,7 @@
     if (e.key === 'Escape' && modalConfirmar.classList.contains('open')) cerrarConfirmar();
   });
 
+  // --- Modal de Reporte de Asistencia ---
   async function verReporte(id) {
     const res = await fetch(`/api/events/${id}/reports`, {
       method: 'POST',
@@ -300,6 +339,7 @@
       return;
     }
 
+    // Inyecta el reporte de la API directamente en la tabla
     const nombre = eventosCache[id] ? eventosCache[id].name : '';
     document.getElementById('tituloModalReporte').textContent = `Reporte — ${nombre}`;
     document.getElementById('resumenReporte').textContent =
@@ -316,9 +356,11 @@
     document.getElementById('modalReporte').classList.remove('open');
   });
 
+  // Inicialización
   cargarMisEventos();
 
 </script>
+<!-- Contenedor inyectado dinámicamente por auth.js -->
 <div id="footer-placeholder"></div>
 </body>
 </html>

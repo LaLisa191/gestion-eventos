@@ -5,97 +5,307 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Mis eventos</title>
 <link rel="stylesheet" href="styles.css">
-<link rel="stylesheet" href="styles-hero-v2.css">
 <link rel="stylesheet" href="styles-portal.css">
 <link rel="stylesheet" href="styles-extra.css">
 <link rel="stylesheet" href="styles-nav.css">
 <link rel="stylesheet" href="styles-footer.css">
+<link rel="stylesheet" href="styles-confirmar.css">
 </head>
 <body>
 
+<!-- Contenedor inyectado dinámicamente por auth.js -->
 <div id="header-placeholder"></div>
 
 <main class="wrap" style="padding-top:48px;padding-bottom:80px">
   <h2 class="section-title">Mis eventos</h2>
   <p class="section-sub" id="subtitulo">Los eventos a los que te has inscrito.</p>
 
+  <!-- Estado de error: Se muestra únicamente si un visitante sin sesión accede a la ruta -->
   <div id="necesitaSesion" style="display:none">
     <div class="state-box error" style="max-width:420px">Debes iniciar sesión para ver tus eventos.</div>
     <a href="login.html?next=my-events.html" class="btn-primary" style="margin-top:16px;display:inline-flex">Iniciar sesión</a>
   </div>
 
+  <!-- Contenedor principal donde se inyectarán las tarjetas de los eventos -->
   <div class="events-grid" id="grid"></div>
 </main>
 
+<!-- Modal: confirmar cancelación de registro -->
+<div class="modal-backdrop" id="modalCancelar">
+  <div class="confirm-card" role="alertdialog" aria-modal="true"
+       aria-labelledby="cancelTitulo" aria-describedby="cancelTexto">
+    <h3 id="cancelTitulo">¿Cancelar registro?</h3>
+    <p id="cancelTexto"></p>
+    <div class="confirm-actions">
+      <button class="btn-secondary" id="cancelVolver">Volver</button>
+      <button class="btn-primary" id="cancelAceptar">Cancelar registro</button>
+    </div>
+  </div>
+</div>
+
 <script src="auth.js"></script>
 <script>
-  const session = getSession();
+    const session = getSession();
 
-  function etiquetaModalidad(m) {
-    return m === 'virtual' ? 'Virtual' : 'Presencial';
-  }
+    // Guarda los datos de cada inscripción para no pasarlos por el onclick
+    let inscripcionesCache = {};
 
-  function etiquetaEstado(estado) {
-    return estado === 'cancelled'
-      ? '<span class="state-box error" style="display:inline-block;padding:4px 10px;font-size:12px;margin:0">Cancelado</span>'
-      : '<span class="state-box success" style="display:inline-block;padding:4px 10px;font-size:12px;margin:0">Confirmado</span>';
-  }
-
-  async function cargarMisEventos() {
-    if (!session) {
-      document.getElementById('necesitaSesion').style.display = 'block';
-      return;
+    // --- Utilidades de formato ---
+    function etiquetaModalidad(m) {
+        return m === 'virtual' ? 'Virtual' : 'Presencial';
     }
 
-    const res = await fetch('/api/users/me/registrations', {
-      headers: { 'Authorization': `Bearer ${session.token}` }
-    });
-    const registrations = await res.json();
-    const grid = document.getElementById('grid');
-
-    const conEvento = registrations.filter(r => r.eventId);
-
-    if (conEvento.length === 0) {
-      grid.innerHTML = `<div class="empty-state">
-        Aún no te has registrado a ningún evento.
-        <a href="index.html#eventos" class="btn-secondary" style="margin-top:14px;display:inline-flex">Ver eventos disponibles</a>
-      </div>`;
-      return;
+    function formatearFechaHora(fecha) {
+        return new Date(fecha).toLocaleString('es-CO', {
+            day: 'numeric',
+            month: 'short',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+        });
     }
 
-    grid.innerHTML = conEvento.map(r => `
-      <div class="event-card">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
-          <h3>${r.eventId.name}</h3>
-          ${etiquetaEstado(r.status)}
-        </div>
-        <div class="meta">${new Date(r.eventId.date).toLocaleDateString('es-CO', { day: 'numeric', month: 'long' })} · ${r.eventId.location} · ${etiquetaModalidad(r.eventId.modality)}</div>
-        ${r.status === 'confirmed'
-          ? `<button class="btn-secondary" onclick="cancelar('${r.eventId._id}', '${r._id}', this)">Cancelar registro</button>`
-          : ''}
-      </div>
-    `).join('');
-  }
-
-  async function cancelar(eventId, registrationId, boton) {
-    boton.disabled = true;
-    boton.textContent = 'Cancelando…';
-    const res = await fetch(`/api/events/${eventId}/registrations/${registrationId}/cancel`, {
-      method: 'PATCH',
-      headers: { 'Authorization': `Bearer ${session.token}` }
-    });
-    if (res.ok) {
-      cargarMisEventos();
-    } else {
-      const data = await res.json();
-      alert(data.message);
-      boton.disabled = false;
-      boton.textContent = 'Cancelar registro';
+    function etiquetaEstado(estado) {
+        return estado === 'cancelled'
+            ? '<span class="estado-inscripcion cancelado">Cancelado</span>'
+            : '<span class="estado-inscripcion">Confirmado</span>';
     }
-  }
 
-  cargarMisEventos();
+    // Retorna el HTML de la imagen. 
+    // UX: Utiliza el evento 'onerror' para ocultar la imagen y mostrar un fondo gris (placeholder) 
+    // en caso de que la URL de la imagen esté rota o el servidor de imágenes falle.
+    function imagenTarjeta(evento) {
+        const imagen = evento.imageUrl;
+
+        if (!imagen) {
+            return '<div class="event-image-placeholder"></div>';
+        }
+
+        return `
+            <img
+                class="event-image"
+                src="${imagen}"
+                alt="Imagen de ${evento.name}"
+                loading="lazy"
+                onerror="this.style.display='none'; this.nextElementSibling.style.display='block'"
+            >
+            <div class="event-image-placeholder" style="display:none"></div>
+        `;
+    }
+
+    // --- Lógica principal ---
+    async function cargarMisEventos() {
+        // Validación de seguridad local
+        if (!session) {
+            document.getElementById('necesitaSesion').style.display = 'block';
+            return;
+        }
+
+        const grid = document.getElementById('grid');
+
+        try {
+            grid.innerHTML = '<div class="empty-state">Cargando tus eventos...</div>';
+
+            // 1. Obtener el historial de inscripciones del usuario actual
+            const res = await fetch('/api/users/me/registrations', {
+                headers: {
+                    'Authorization': `Bearer ${session.token}`
+                }
+            });
+
+            if (!res.ok) throw new Error('No se pudieron cargar tus inscripciones.');
+            const registrations = await res.json();
+
+            // 2. Obtener la lista general de eventos.
+            // ¿Por qué? Porque la información dentro de "registrations" podría tener datos estáticos.
+            // Al cruzarla con la lista general en vivo, garantizamos que los cupos disponibles mostrados sean reales y actuales.
+            let eventos = [];
+            try {
+                const eventosRes = await fetch('/api/events');
+                if (eventosRes.ok) eventos = await eventosRes.json();
+            } catch (error) {
+                console.warn('No se pudo consultar la disponibilidad de cupos:', error);
+            }
+
+            // Convertir el array de eventos a un Mapa (Diccionario) para búsquedas instantáneas por ID
+            const eventosPorId = new Map(
+                eventos.map(ev => [String(ev._id), ev])
+            );
+
+            // Filtrar inscripciones corruptas que no tengan el objeto eventId
+            const conEvento = registrations.filter(r => r.eventId);
+
+        inscripcionesCache = {};
+        conEvento.forEach(r => {
+        inscripcionesCache[r._id] = { eventId: r.eventId._id, name: r.eventId.name };
+       });
+
+            if (conEvento.length === 0) {
+                grid.innerHTML = `
+                    <div class="empty-state">
+                        Aún no te has registrado a ningún evento.
+                        <a href="index.html#eventos"
+                           class="btn-secondary"
+                           style="margin-top:14px;display:inline-flex">
+                            Ver eventos disponibles
+                        </a>
+                    </div>
+                `;
+                return;
+            }
+
+            // Generar el HTML mapeando cada registro a su respectiva tarjeta
+            grid.innerHTML = conEvento.map(r => {
+                const ev = r.eventId;
+
+                // Reemplaza los datos del evento anidado por los datos en vivo obtenidos del catálogo general
+                const eventoActualizado = eventosPorId.get(String(ev._id)) || ev;
+
+                const capacidad = Number(eventoActualizado.maxCapacity);
+                const disponibles = eventoActualizado.availableSpots;
+
+                // Cálculo seguro del porcentaje de ocupación para la barra de progreso 
+                // Evita valores NaN, Infinity o negativos si los datos de la DB llegan mal
+                const porcentaje = Number.isFinite(Number(disponibles)) && capacidad > 0
+                    ? Math.max(0, Math.min(100, ((capacidad - Number(disponibles)) / capacidad) * 100))
+                    : 0;
+
+                const mostrarCupos =
+                    disponibles !== undefined &&
+                    Number.isFinite(Number(disponibles)) &&
+                    Number.isFinite(capacidad) &&
+                    capacidad > 0;
+
+                return `
+                    <div class="event-card">
+                        ${imagenTarjeta(ev)}
+
+                        <div class="evento-titulo-fila">
+                            <h3>${ev.name}</h3>
+                            ${etiquetaEstado(r.status)}
+                        </div>
+
+                        <div class="meta">
+                            ${formatearFechaHora(ev.date)}
+                            · ${ev.location}
+                            · ${etiquetaModalidad(ev.modality)}
+                        </div>
+
+                        ${mostrarCupos ? `
+                            <div class="cupo-bar-track">
+                                <div class="cupo-bar-fill" style="width:${porcentaje}%"></div>
+                            </div>
+                            <div class="cupo-label">
+                                <span>${disponibles} cupos libres</span>
+                                <span>${capacidad} en total</span>
+                            </div>
+                        ` : ''}
+
+                        <!-- Solo permite cancelar si la inscripción sigue activa -->
+                        ${r.status === 'confirmed' ? `
+                            <button
+                                class="btn-primary btn-cancelar"
+                                onclick="pedirCancelacion('${r._id}')">
+                                Cancelar registro
+                            </button>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+
+        } catch (error) {
+            console.error(error);
+            grid.innerHTML = `
+                <div class="state-box error">
+                    ${error.message || 'Ocurrió un error al cargar tus eventos.'}
+                </div>
+            `;
+        }
+    }
+
+// ---------- Cancelar registro con confirmación ----------
+let registroPorCancelar = null;   // { eventId, registrationId }
+// 'confirmar' = pide permiso | 'listo' = la API respondió ok y se muestra el éxito
+let pasoCancelar = 'confirmar';
+
+const modalCancelar = document.getElementById('modalCancelar');
+const cancelTitulo = document.getElementById('cancelTitulo');
+const cancelTexto = document.getElementById('cancelTexto');
+const btnCancelVolver = document.getElementById('cancelVolver');
+const btnCancelAceptar = document.getElementById('cancelAceptar');
+
+// Paso 1: abrir el modal
+function pedirCancelacion(registrationId) {
+    const insc = inscripcionesCache[registrationId];
+    if (!insc) return;
+
+    registroPorCancelar = { eventId: insc.eventId, registrationId };
+    pasoCancelar = 'confirmar';
+
+    cancelTitulo.textContent = '¿Cancelar registro?';
+    cancelTexto.textContent = `Vas a cancelar tu inscripción a "${insc.name}". Esta acción no se puede deshacer.`;
+    btnCancelVolver.style.display = '';
+    btnCancelAceptar.textContent = 'Cancelar registro';
+    btnCancelAceptar.disabled = false;
+    modalCancelar.classList.add('open');
+    document.body.classList.add('modal-open');
+}
+
+function cerrarCancelar() {
+    modalCancelar.classList.remove('open');
+    document.body.classList.remove('modal-open');
+    registroPorCancelar = null;
+}
+
+btnCancelVolver.addEventListener('click', cerrarCancelar);
+
+// Paso 2: enviar la cancelación y pasar a estado 'listo'
+btnCancelAceptar.addEventListener('click', async () => {
+    if (pasoCancelar === 'listo') { cerrarCancelar(); return; }
+    if (!registroPorCancelar || !session) return;
+
+    btnCancelAceptar.disabled = true;   // evita doble clic
+    btnCancelAceptar.textContent = 'Cancelando...';
+
+    try {
+        const { eventId, registrationId } = registroPorCancelar;
+        const res = await fetch(
+            `/api/events/${eventId}/registrations/${registrationId}/cancel`,
+            { method: 'PATCH', headers: { 'Authorization': `Bearer ${session.token}` } }
+        );
+
+        if (res.ok) {
+            pasoCancelar = 'listo';
+            cancelTitulo.textContent = 'Registro cancelado correctamente';
+            cancelTexto.textContent = 'Tu inscripción ya aparece como cancelada.';
+            btnCancelVolver.style.display = 'none';
+            btnCancelAceptar.textContent = 'Aceptar';
+            cargarMisEventos();   // refresca la lista de fondo
+        } else {
+            const data = await res.json().catch(() => ({}));
+            cancelTexto.textContent = data.message || 'No se pudo cancelar la inscripción.';
+            btnCancelAceptar.textContent = 'Reintentar';
+        }
+    } catch (err) {
+        console.error(err);
+        cancelTexto.textContent = 'No hay conexión con el servidor. Inténtalo de nuevo.';
+        btnCancelAceptar.textContent = 'Reintentar';
+    }
+    btnCancelAceptar.disabled = false;
+});
+
+// Cerrar al hacer clic afuera o con Escape
+modalCancelar.addEventListener('click', (e) => {
+    if (e.target === modalCancelar) cerrarCancelar();
+});
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && modalCancelar.classList.contains('open')) cerrarCancelar();
+});
+
+    // Inicializar la vista
+    cargarMisEventos();
 </script>
+<!-- Contenedor inyectado dinámicamente por auth.js -->
 <div id="footer-placeholder"></div>
 </body>
 </html>

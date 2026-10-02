@@ -1,0 +1,48 @@
+/* Fondo y tarjeta */
+.fondo      { background: #1f1b2e; }
+.tarjeta    { background: #2b2640; border-radius: 16px; }
+
+/* Cabecera */
+.cabecera   { background: #43335a; padding: 28px 24px; text-align: center;
+              font-family: 'Helvetica Neue', Arial, sans-serif; }
+.marca      { font-size: 24px; font-weight: bold; color: #ffffff; letter-spacing: -0.5px; }
+.marca-s    { color: #e85d9f; }
+.universidad{ font-size: 11px; letter-spacing: 1px; color: #c9c3e0; margin-top: 4px; }
+.logo { margin: 16px 0 12px 0; text-align: center; }
+.titulo     { font-size: 22px; font-weight: bold; color: #ffffff; }
+.subtitulo  { font-size: 13px; color: #d6d0ea; margin-top: 8px; }
+
+/* Detalles del evento */
+.detalles       { padding: 24px 24px 8px 24px; font-family: 'Helvetica Neue', Arial, sans-serif; }
+.evento-nombre  { font-size: 19px; font-weight: bold; color: #ffffff; margin-bottom: 10px; }
+.fila-icono     { font-size: 18px; padding: 8px 0; width: 32px; vertical-align: top; }
+.fila-texto     { padding: 8px 0; font-family: 'Helvetica Neue', Arial, sans-serif; }
+.fila-titulo    { font-size: 15px; color: #ffffff; }
+.fila-valor     { font-size: 13px; color: #c9c3e0; margin-top: 3px; }
+.separador      { border: none; border-top: 1px solid #4a4466; margin: 16px 0 20px 0; }
+
+/* Caja del QR */
+.qr-contenedor  { padding: 0 24px 20px 24px; }
+.qr-caja        { background: #ffffff; border-radius: 12px; }
+.qr-imagen-td   { padding: 22px 16px 6px 16px; text-align: center; }
+.qr-imagen      { display: block; margin: 0 auto; border: 1px solid #1f1b2e; border-radius: 8px; }
+.qr-titulo      { padding: 10px 16px 0 16px; text-align: center; font-family: 'Helvetica Neue', Arial, sans-serif;
+                  font-size: 15px; font-weight: bold; color: #2b2640; }
+.qr-texto       { padding: 4px 16px 20px 16px; text-align: center; font-family: 'Helvetica Neue', Arial, sans-serif;
+                  font-size: 12px; color: #6b6780; }
+
+/* Botón (el degradado se ve en Gmail; Outlook usa el color sólido de bgcolor) */
+.boton-contenedor { padding: 0 24px 12px 24px; text-align: center; }
+.boton-td   { background: #8b5cf6; background-image: linear-gradient(90deg, #8b5cf6, #e85d9f);
+              border-radius: 10px; text-align: center; }
+.boton      { display: block; padding: 14px; font-family: 'Helvetica Neue', Arial, sans-serif;
+              font-size: 15px; font-weight: bold; color: #ffffff; text-decoration: none; }
+
+/* Pie */
+.pie        { padding: 0 24px 24px 24px; text-align: center; font-family: 'Helvetica Neue', Arial, sans-serif;
+              font-size: 12px; color: #a9a3c4; }
+
+/* Pantallas pequeñas */
+@media (max-width: 520px) {
+  .detalles, .qr-contenedor, .boton-contenedor { padding-left: 16px; padding-right: 16px; }
+}

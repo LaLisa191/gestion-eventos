@@ -2,13 +2,14 @@
 <html lang="es">
 <head>
   <script>
+    // Protección de ruta: Redirige al inicio si el usuario ya tiene una sesión activa 
+    // para evitar que vuelva a ver el login.
    if (localStorage.getItem('session')) location.href = 'index.html';
   </script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Iniciar sesión — eventos</title>
 <link rel="stylesheet" href="styles.css">
-<link rel="stylesheet" href="styles-hero-v2.css">
 <link rel="stylesheet" href="styles-portal.css">
 <link rel="stylesheet" href="styles-extra.css">
 <link rel="stylesheet" href="styles-nav.css">
@@ -16,6 +17,7 @@
 </head>
 <body>
 
+<!-- Contenedor que será llenado dinámicamente por cargarParciales() desde auth.js -->
 <div id="header-placeholder"></div>
 
 <div class="registro-wrap">
@@ -35,6 +37,7 @@
 
     <button class="btn-primary" onclick="login()">Iniciar sesión</button>
 
+    <!-- Contenedor para inyectar alertas de error desde la API -->
     <div id="estado"></div>
 
     <p style="margin-top:20px;font-size:14px;color:var(--text-muted)">
@@ -42,9 +45,11 @@
     </p>
   </div>
 </div>
+
+<!-- Carga funciones globales requeridas como setSession y cargarParciales -->
 <script src="auth.js"></script>
 <script>
-
+  // Procesa la autenticación manejando credenciales y redirección
   async function login() {
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
@@ -57,14 +62,21 @@
     const data = await res.json();
 
     if (res.ok) {
+      // Almacena los datos del usuario en el localStorage
       setSession(data);
+      
+      // Manejo de URL "next": Si el usuario intentó entrar a una ruta protegida antes de loguearse,
+      // la URL tendrá un parámetro "?next=ruta". Si existe, lo devuelve ahí; si no, va al inicio.
       const params = new URLSearchParams(location.search);
       location.href = params.get('next') || 'index.html';
     } else {
+      // Muestra el mensaje de error proveído por el backend (ej. "Contraseña incorrecta")
       document.getElementById('estado').innerHTML = `<div class="state-box error">${data.message}</div>`;
     }
   }
 </script>
+
+<!-- Contenedor para el footer inyectado dinámicamente -->
 <div id="footer-placeholder"></div>
 </body>
 </html>

@@ -16,7 +16,9 @@
 </head>
 <body>
 
+<!-- El nav se inyecta aquí desde auth.js -->
 <div id="header-placeholder"></div>
+
 <section class="hero wrap">
   <div>
     <div class="eyebrow" style="color:var(--text-muted);font-size:13px;margin-bottom:10px">Empecemos con tu próximo evento</div>
@@ -24,11 +26,13 @@
     <p>Consulta los cupos disponibles en tiempo real y recibe la confirmación de tu registro al instante. Participa en los eventos presenciales y virtuales que tenemos disponibles.</p>
     <div style="display:flex;gap:14px;flex-wrap:wrap">
       <a href="#eventos" class="btn-primary">Ver eventos disponibles</a>
+      <!-- Solo visible para organizadores (se muestra desde el JS) -->
       <a href="#" id="btnCrearEvento" class="btn-secondary" style="display:none">+ Crear evento</a>
     </div>
   </div>
 
   <div class="hero-visual">
+    <!-- Ilustración por defecto: se oculta si el próximo evento tiene foto -->
     <svg viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Ilustración de un evento con una persona presentando en un escenario">
       <polygon points="200,10 90,270 310,270" fill="white" opacity="0.06"/>
       <ellipse cx="200" cy="262" rx="140" ry="16" fill="white" opacity="0.14"/>
@@ -56,6 +60,7 @@
     </div>
   </div>
 </section>
+
 <section class="wrap compare-section">
   <h2 class="section-title">¿Por qué centralizar tus eventos?</h2>
   <p class="section-sub">Así se organizan hoy la mayoría de eventos universitarios, y así se ven con esta plataforma.</p>
@@ -137,15 +142,17 @@
 
 <script src="auth.js"></script>
 <script>
-  const session = getSession();
-  let eventosCache = [];
+  const session = getSession();   // null si no hay sesión iniciada
+
+  // ---------- Estado de la página ----------
+  let eventosCache = [];          // todos los eventos, ordenados por creación (más nuevos primero)
   let terminoBusqueda = '';
-  let modalidadActual = null;
+  let modalidadActual = null;     // 'virtual' | 'in-person' | null (sin filtro)
   let favoritosIds = new Set();
   let soloFavoritos = false;
   let paginaActual = 1;
   const eventosPorPagina = 6;
-  let yaPosicionado = false;
+  let yaPosicionado = false;      // evita re-saltar a #eventos cuando se recargan los eventos
 
   function etiquetaModalidad(m) {
     return m === 'virtual' ? 'Virtual' : 'Presencial';
@@ -180,6 +187,7 @@
         <div class="meta">
             ${formatearFechaHora(ev.date)} · ${ev.location} · ${etiquetaModalidad(ev.modality)}
         </div>
+        <!-- La barra muestra el porcentaje de cupos ocupados, no de libres -->
         <div class="cupo-bar-track">
             <div class="cupo-bar-fill"
                  style="width:${100 - (ev.availableSpots / ev.maxCapacity * 100)}%">
@@ -197,6 +205,7 @@
 `).join('');
   }
 
+  // Aplica modalidad + búsqueda + favoritos, y luego pagina el resultado
   function filtrarYPintar() {
     let filtrados = eventosCache;
     if (modalidadActual) filtrados = filtrados.filter(e => e.modality === modalidadActual);
@@ -207,6 +216,7 @@
     if (soloFavoritos) filtrados = filtrados.filter(e => favoritosIds.has(e._id));
 
     const totalPaginas = Math.max(1, Math.ceil(filtrados.length / eventosPorPagina));
+    // Si al filtrar quedan menos páginas que la actual, retrocede a la última
     if (paginaActual > totalPaginas) paginaActual = totalPaginas;
 
     const inicio = (paginaActual - 1) * eventosPorPagina;
@@ -224,6 +234,7 @@
       <button class="btn-secondary" id="btnPagSiguiente" ${paginaActual === totalPaginas ? 'disabled' : ''}>Siguiente →</button>
     `;
 
+    // Los botones se recrean en cada render, por eso los listeners se asignan aquí
     document.getElementById('btnPagAnterior').addEventListener('click', () => {
       paginaActual--;
       filtrarYPintar();
@@ -236,6 +247,7 @@
     });
   }
 
+  // Filtra por modalidad y la refleja en la URL (?modality=...) sin recargar
   function aplicarFiltro(modalidad) {
     paginaActual = 1;
     modalidadActual = modalidad;
@@ -248,6 +260,7 @@
       params.delete('modality');
       document.getElementById('subtituloSeccion').textContent = 'Consulta los eventos disponibles e inscríbete fácilmente en actividades presenciales y virtuales.';
     }
+    // Se conserva location.hash: si se forzara #eventos, "Inicio" saltaría a la mitad de la página
     history.replaceState(null, '', `${location.pathname}${params.toString() ? '?' + params.toString() : ''}${location.hash}`);
     filtrarYPintar();
   }
@@ -266,6 +279,7 @@
     filtrarYPintar();
   });
 
+  // Guarda o quita el favorito en el servidor y actualiza solo el botón pulsado
   async function toggleFavorito(eventId, btn) {
     if (!session) { location.href = 'login.html?next=index.html'; return; }
     const esFavorito = favoritosIds.has(eventId);
@@ -283,6 +297,7 @@
         btn.textContent = '♥';
         btn.classList.add('active');
       }
+      // Con "Solo favoritos" activo, la tarjeta debe desaparecer al quitar el favorito
       if (soloFavoritos) filtrarYPintar();
     }
   }
@@ -294,6 +309,7 @@
     });
     if (res.ok) {
       const favs = await res.json();
+      // filter(Boolean) descarta favoritos cuyo evento ya fue eliminado (llegan como null)
       favoritosIds = new Set(favs.filter(Boolean).map(f => f._id));
     }
   }
@@ -303,42 +319,43 @@
     const res = await fetch('/api/events');
     const lista = await res.json();
 
-// Fecha de creación: usa createdAt si existe; si no, la saca del _id de Mongo
-const creadoEn = (ev) => ev.createdAt
-  ? new Date(ev.createdAt).getTime()
-  : Number.parseInt(ev._id.substring(0, 8), 16) * 1000;
+    // Fecha de creación: usa createdAt si existe; si no, la saca del _id de Mongo
+    // (los primeros 8 caracteres hexadecimales son un timestamp en segundos)
+    const creadoEn = (ev) => ev.createdAt
+      ? new Date(ev.createdAt).getTime()
+      : Number.parseInt(ev._id.substring(0, 8), 16) * 1000;
 
-eventosCache = lista.sort((a, b) => creadoEn(b) - creadoEn(a));
+    eventosCache = lista.sort((a, b) => creadoEn(b) - creadoEn(a));
 
     if (eventosCache.length === 0) {
       document.getElementById('grid').innerHTML =
         `<div class="empty-state">Todavía no hay eventos publicados.</div>`;
     } else {
+      // El "próximo" se ordena por fecha del evento, sobre una copia para no alterar el orden del grid
       const proximo = [...eventosCache]
         .sort((a, b) => new Date(a.date) - new Date(b.date))[0];
-      const card = document.getElementById('previewCard');
 
-      card.style.display = 'block';
+      document.getElementById('previewCard').style.display = 'block';
 
-      // Foto del evento más próximo en el hero (si tiene)
-     const visual = document.querySelector('.hero-visual');
-     let imgHero = document.getElementById('heroImagen');
+      // Si el próximo evento tiene foto, reemplaza la ilustración del hero
+      const visual = document.querySelector('.hero-visual');
+      let imgHero = document.getElementById('heroImagen');
 
-     if (proximo.imageUrl) {
-       if (!imgHero) {
-    imgHero = document.createElement('img');
-    imgHero.id = 'heroImagen';
-    imgHero.className = 'hero-event-image';
-    visual.prepend(imgHero);
-  }
-   imgHero.src = proximo.imageUrl;
-   imgHero.alt = proximo.name;
-   visual.classList.add('con-foto');
-    } else {
+      if (proximo.imageUrl) {
+        if (!imgHero) {
+          imgHero = document.createElement('img');
+          imgHero.id = 'heroImagen';
+          imgHero.className = 'hero-event-image';
+          visual.prepend(imgHero);
+        }
+        imgHero.src = proximo.imageUrl;
+        imgHero.alt = proximo.name;
+        visual.classList.add('con-foto');
+      } else {
+        if (imgHero) imgHero.remove();
+        visual.classList.remove('con-foto');
+      }
 
-  if (imgHero) imgHero.remove();
-  visual.classList.remove('con-foto');
-}
       document.getElementById('previewNombre').textContent = proximo.name;
       document.getElementById('previewMeta').textContent =
         `${formatearFechaHora(proximo.date)} · ${proximo.location}`;
@@ -349,13 +366,14 @@ eventosCache = lista.sort((a, b) => creadoEn(b) - creadoEn(a));
       document.getElementById('previewCupoMax').textContent =
         proximo.maxCapacity;
     }
-  document.querySelector('.hero-visual').classList.add('listo');
+
+    // Hasta este punto la ilustración está oculta por CSS; así no parpadea antes de mostrar la foto
+    document.querySelector('.hero-visual').classList.add('listo');
 
     const modalidadInicial = new URLSearchParams(location.search).get('modality');
     aplicarFiltro(modalidadInicial);
 
-
-        // Reposiciona en la sección una vez que la página terminó de acomodarse
+    // Reposiciona en la sección solo la primera vez, cuando el contenido ya cambió la altura de la página
     if (!yaPosicionado) {
       yaPosicionado = true;
       if (location.hash === '#eventos') {
@@ -370,7 +388,8 @@ eventosCache = lista.sort((a, b) => creadoEn(b) - creadoEn(a));
   function abrirModal() {
     const backdrop = document.getElementById('modalCrear');
     backdrop.classList.add('open');
-    document.body.classList.add('modal-open');
+    document.body.classList.add('modal-open');   // bloquea el scroll del fondo
+    // Debe ir después de agregar 'open': con display:none el navegador ignora el scroll
     backdrop.querySelector('.modal-card').scrollTop = 0;
     backdrop.querySelectorAll('.campo-error').forEach(el => el.classList.remove('campo-error'));
   }
@@ -380,6 +399,7 @@ eventosCache = lista.sort((a, b) => creadoEn(b) - creadoEn(a));
     document.body.classList.remove('modal-open');
   }
 
+  // El botón "+ Crear evento" solo existe para organizadores
   if (session && session.user.userType === 'organizer') {
     const boton = document.getElementById('btnCrearEvento');
     boton.style.display = 'inline-flex';
@@ -395,17 +415,17 @@ eventosCache = lista.sort((a, b) => creadoEn(b) - creadoEn(a));
 
   document.getElementById('cerrarModal').addEventListener('click', cerrarModal);
 
-  // clic en el fondo oscuro cierra el modal
+  // Clic en el fondo oscuro (no dentro de la tarjeta) cierra el modal
   document.getElementById('modalCrear').addEventListener('click', (e) => {
     if (e.target.id === 'modalCrear') cerrarModal();
   });
 
-  // Escape cierra el modal
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') cerrarModal();
   });
 
   // ---------- Validación del formulario ----------
+  // Todos son obligatorios excepto la imagen
   const camposCrear = [
     { id: 'ceNombre',      etiqueta: 'Nombre del evento' },
     { id: 'ceDescripcion', etiqueta: 'Descripción' },
@@ -416,6 +436,7 @@ eventosCache = lista.sort((a, b) => creadoEn(b) - creadoEn(a));
     { id: 'ceCupo',        etiqueta: 'Cupo máximo' }
   ];
 
+  // Marca los campos inválidos y devuelve los mensajes y el primer campo con error
   function validarFormularioCrear() {
     const problemas = [];
     let primerInvalido = null;
@@ -451,6 +472,7 @@ eventosCache = lista.sort((a, b) => creadoEn(b) - creadoEn(a));
   async function crearEvento() {
     const estado = document.getElementById('estadoModal');
 
+    // Se valida en el navegador para no mostrar errores técnicos del servidor
     const { problemas, primerInvalido } = validarFormularioCrear();
     if (problemas.length > 0) {
       estado.innerHTML = `
@@ -464,12 +486,12 @@ eventosCache = lista.sort((a, b) => creadoEn(b) - creadoEn(a));
     }
 
     estado.innerHTML = '';
-    const formData = new FormData();
+    const formData = new FormData();   // FormData porque puede incluir un archivo
     const fecha = document.getElementById('ceFecha').value;
     const hora = document.getElementById('ceHora').value;
     formData.append('name', document.getElementById('ceNombre').value.trim());
     formData.append('description', document.getElementById('ceDescripcion').value.trim());
-    formData.append('date', `${fecha}T${hora}`);
+    formData.append('date', `${fecha}T${hora}`);   // el backend espera fecha y hora en un solo valor
     formData.append('location', document.getElementById('ceLugar').value.trim());
     formData.append('modality', document.getElementById('ceModalidad').value);
     formData.append('maxCapacity', document.getElementById('ceCupo').value);
@@ -489,6 +511,7 @@ eventosCache = lista.sort((a, b) => creadoEn(b) - creadoEn(a));
         cerrarModal();
         cargarEventos();
       } else {
+        // El mensaje técnico del servidor solo va a la consola
         console.error('Error al crear evento:', data.message);
         estado.innerHTML = `<div class="state-box error">No se pudo crear el evento. Revisa los datos e inténtalo de nuevo.</div>`;
       }
@@ -500,7 +523,7 @@ eventosCache = lista.sort((a, b) => creadoEn(b) - creadoEn(a));
 
   cargarEventos();
 
-  // Si tarda demasiado o falla, muestra la ilustración de todos modos
+  // Respaldo: si la carga falla o tarda, muestra la ilustración de todos modos
   setTimeout(() => document.querySelector('.hero-visual').classList.add('listo'), 4000);
 </script>
 <div id="footer-placeholder"></div>

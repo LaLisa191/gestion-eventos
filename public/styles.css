@@ -427,3 +427,69 @@ body.modal-open { overflow: hidden; }
   margin: 8px 0 0;
   padding-left: 18px;
 }
+
+/* ---------- Tarjetas de Mis eventos ---------- */
+
+.event-card .event-image,
+.event-card .event-image-placeholder {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+    display: block;
+}
+
+.event-card .event-image-placeholder {
+    background: linear-gradient(
+        135deg,
+        #39265e,
+        #7544d4 60%,
+        #c653a8
+    );
+}
+
+.evento-titulo-fila {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.evento-titulo-fila h3 {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.estado-inscripcion {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    padding: 5px 11px;
+    border-radius: 999px;
+    background: var(--success-bg);
+    color: var(--success);
+    font-size: 12px;
+}
+
+.estado-inscripcion.cancelado {
+    background: var(--error-bg);
+    color: var(--error);
+}
+
+/* Botón de cancelar con el mismo degradado de Registrarme */
+.event-card .btn-cancelar {
+    width: 100%;
+    margin-top: auto;
+    justify-content: center;
+}
+
+.event-card .btn-cancelar:disabled {
+    opacity: 0.65;
+    cursor: wait;
+}
+
+@media (max-width: 760px) {
+    .evento-titulo-fila {
+        flex-wrap: wrap;
+    }
+}

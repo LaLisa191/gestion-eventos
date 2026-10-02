@@ -5,28 +5,33 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Mi perfil</title>
 <link rel="stylesheet" href="styles.css">
-<link rel="stylesheet" href="styles-hero-v2.css">
 <link rel="stylesheet" href="styles-extra.css">
 <link rel="stylesheet" href="styles-nav.css">
 <link rel="stylesheet" href="styles-footer.css">
 </head>
 <body>
 
+<!-- Contenedor inyectado dinámicamente por auth.js -->
 <div id="header-placeholder"></div>
 
 <div class="registro-wrap">
   <a href="index.html" class="back-link">← Volver a eventos</a>
 
+  <!-- Estado de error: visible si un visitante anónimo intenta acceder a la ruta -->
   <div id="necesitaSesion" style="display:none">
     <div class="state-box error" style="max-width:420px">Debes iniciar sesión para ver tu perfil.</div>
     <a href="login.html?next=profile.html" class="btn-primary" style="margin-top:16px;display:inline-flex">Iniciar sesión</a>
   </div>
 
+  <!-- Contenedor principal del perfil (oculto por defecto hasta validar sesión) -->
   <div id="contenidoPerfil" style="display:none">
+    
+    <!-- Tarjeta 1: Actualización de datos básicos -->
     <div class="registro-card">
       <h2>Mi perfil</h2>
       <div class="meta" id="tipoCuenta" style="color:var(--text-muted);font-size:14px;margin-top:4px"></div>
 
+      <!-- Atributos 'autocomplete' mejoran la UX y accesibilidad con los gestores de contraseñas/formularios -->
       <label for="pNombre">Nombre completo</label>
       <input id="pNombre" autocomplete="name">
 
@@ -37,6 +42,7 @@
       <div id="estadoDatos"></div>
     </div>
 
+    <!-- Tarjeta 2: Cambio de contraseña (separado por seguridad y claridad de UI) -->
     <div class="registro-card" style="margin-top:20px">
       <h2 style="font-size:18px">Cambiar contraseña</h2>
       <div class="meta" style="color:var(--text-muted);font-size:14px;margin-top:4px">Déjalo en blanco si no quieres cambiarla. Mínimo 6 caracteres.</div>
@@ -56,39 +62,49 @@
 <script src="auth.js"></script>
 <script>
   const session = getSession();
+  
+  // Expresión regular estándar para validación básica de correos electrónicos en el cliente
   const REGEX_CORREO = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/;
 
+  // --- Inicialización ---
   function cargarPerfil() {
     if (!session) {
       document.getElementById('necesitaSesion').style.display = 'block';
       return;
     }
+    // Muestra el contenido y precarga los inputs con los datos de la sesión actual
     document.getElementById('contenidoPerfil').style.display = 'block';
     document.getElementById('pNombre').value = session.user.name;
     document.getElementById('pCorreo').value = session.user.email;
+    
+    // Indicador visual del rol del usuario
     document.getElementById('tipoCuenta').textContent =
       session.user.userType === 'organizer' ? 'Cuenta de organizador' : 'Cuenta de participante';
   }
 
+  // Utilidad para renderizar mensajes de error sin repetir código
   function mostrarError(elId, texto) {
     document.getElementById(elId).innerHTML = `<div class="state-box error">${texto}</div>`;
   }
 
+  // --- Actualización de Datos Básicos ---
   async function guardarDatos() {
     const estado = document.getElementById('estadoDatos');
-    estado.innerHTML = '';
+    estado.innerHTML = ''; // Limpia estados previos
 
     const name = document.getElementById('pNombre').value.trim();
     const email = document.getElementById('pCorreo').value.trim();
 
+    // Validaciones preventivas en el frontend
     if (!name) return mostrarError('estadoDatos', 'El nombre no puede quedar vacío.');
     if (!REGEX_CORREO.test(email)) return mostrarError('estadoDatos', 'Escribe un correo válido.');
 
     const boton = document.getElementById('btnGuardarDatos');
-    boton.disabled = true;
+    boton.disabled = true; // Previene múltiples envíos simultáneos
     boton.textContent = 'Guardando…';
 
     try {
+      // El mismo endpoint maneja actualizaciones parciales (PATCH/PUT) dependiendo del payload
       const res = await fetch('/api/users/me', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.token}` },
@@ -97,18 +113,21 @@
       const data = await res.json();
 
       if (res.ok) {
+        // Crítico: Actualizar la sesión en localStorage para que el navbar y otras vistas reflejen el cambio
         setSession({ token: session.token, user: data });
         estado.innerHTML = `<div class="state-box success">Datos actualizados.</div>`;
-        renderAccountNav();
+        if (typeof renderAccountNav === 'function') renderAccountNav(); // Actualiza el header si la función existe
       } else {
         mostrarError('estadoDatos', data.message);
       }
     } finally {
+      // Restaura el estado del botón sin importar si hubo éxito o error
       boton.disabled = false;
       boton.textContent = 'Guardar cambios';
     }
   }
 
+  // --- Actualización de Contraseña ---
   async function guardarPassword() {
     const estado = document.getElementById('estadoPassword');
     estado.innerHTML = '';
@@ -116,6 +135,7 @@
     const currentPassword = document.getElementById('pActual').value;
     const newPassword = document.getElementById('pNueva').value;
 
+    // Validaciones locales
     if (!newPassword) return mostrarError('estadoPassword', 'Escribe la nueva contraseña.');
     if (newPassword.length < 6) return mostrarError('estadoPassword', 'La nueva contraseña debe tener al menos 6 caracteres.');
     if (!currentPassword) return mostrarError('estadoPassword', 'Escribe tu contraseña actual.');
@@ -125,6 +145,7 @@
     boton.textContent = 'Actualizando…';
 
     try {
+      // Se reutiliza el mismo endpoint, pero el backend detecta los campos de contraseña
       const res = await fetch('/api/users/me', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.token}` },
@@ -134,6 +155,7 @@
 
       if (res.ok) {
         estado.innerHTML = `<div class="state-box success">Contraseña actualizada.</div>`;
+        // Limpia los campos por seguridad tras un cambio exitoso
         document.getElementById('pActual').value = '';
         document.getElementById('pNueva').value = '';
       } else {
@@ -145,8 +167,10 @@
     }
   }
 
+  // Arranca el flujo de validación al cargar el script
   cargarPerfil();
 </script>
+<!-- Contenedor inyectado dinámicamente por auth.js -->
 <div id="footer-placeholder"></div>
 </body>
 </html>
