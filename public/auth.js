@@ -189,3 +189,17 @@ function formatearFechaHora(fechaISO) {
   const hora = d.toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' });
   return `${fecha} · ${hora}`;
 }
+function activarTogglePassword() {
+  document.querySelectorAll('.toggle-password').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const input = document.getElementById(btn.dataset.target);
+      const icono = btn.querySelector('i');
+      if (!input || !icono) return;
+      const mostrar = input.type === 'password';
+      input.type = mostrar ? 'text' : 'password';
+      icono.classList.toggle('bi-eye', !mostrar);
+      icono.classList.toggle('bi-eye-slash', mostrar);
+      btn.setAttribute('aria-label', mostrar ? 'Ocultar contraseña' : 'Mostrar contraseña');
+    });
+  });
+}

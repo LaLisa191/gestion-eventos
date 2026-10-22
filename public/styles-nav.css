@@ -110,14 +110,21 @@ body { padding-top: 76px; }
   color: var(--text);
 }
 
-/* ---------- insignia de la universidad ---------- */
+/* ---------- etiqueta "Universidad de Cartagena" ---------- */
 .header-tag {
   margin-left: auto;
+  flex-shrink: 0;
   font-size: 13px;
   color: var(--text-muted);
   border: 1px solid var(--border);
   padding: 6px 14px;
   border-radius: 99px;
+  white-space: nowrap;
+}
+
+/* En anchos medianos no cabe junto a los enlaces: se oculta */
+@media (max-width: 1000px) {
+  .header-tag { display: none; }
 }
 
 /* ---------- botón ☰, solo visible en pantallas angostas ---------- */
@@ -163,9 +170,34 @@ body { padding-top: 76px; }
     opacity: 1;
     padding: 12px;
   }
+}
 
-  .header-tag { 
-    margin-left: 0;
-    display: none;  
-  }
+/* ---------- enlace activo del nav ---------- */
+#header-placeholder a.nav-activo {
+  color: var(--text);
+  font-weight: 600;
+  position: relative;
+}
+
+#header-placeholder a.nav-activo::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -8px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--accent-gradient);
+}
+
+/* El logo ahora es un enlace*/
+a.wordmark {
+  text-decoration: none;
+  color: var(--text);
+}
+
+a.wordmark:focus-visible {
+  outline: 2px solid var(--accent-violet);
+  outline-offset: 4px;
+  border-radius: 4px;
 }

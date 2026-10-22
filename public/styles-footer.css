@@ -64,3 +64,66 @@
   .footer-grid { grid-template-columns: 1fr; }
 }
 
+/* ---------- botón volver arriba ---------- */
+.btn-subir {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: var(--accent-gradient);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(139, 92, 246, 0.35);
+  z-index: 900;                 /* por debajo de los modales (1000) */
+  opacity: 0;
+  visibility: hidden;           /* oculto también para el teclado y lectores */
+  transform: translateY(12px);
+  transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s;
+}
+
+.btn-subir.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+}
+
+.btn-subir.visible:hover { 
+  transform: translateY(-2px); 
+}
+
+.btn-subir:focus-visible { 
+  outline: 2px solid var(--text); outline-offset: 3px; 
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-subir { transition: none; }
+}
+
+/* Espacio lateral del footer en celular */
+@media (max-width: 760px) {
+  .site-footer {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+}
+
+/* Botón de subir y footer en celular */
+@media (max-width: 760px) {
+  .btn-subir {
+    width: 42px;
+    height: 42px;
+    right: 14px;
+    bottom: 14px;
+  }
+
+  /* Espacio libre al final para que el botón no tape el texto */
+  .site-footer {
+    padding-bottom: 76px;
+  }
+}

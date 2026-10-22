@@ -15,4 +15,7 @@ app.use('/api/events/:id/registrations', require('./routes/Registrations'));
 app.use('/api/events', require('./routes/Events'));
 app.use('/api/events/qr', require('./routes/EventQR'));
 
+// Debe ir después de todas las rutas para capturar sus errores
+app.use(require('./middleware/errorHandler'));
+
 module.exports = app;

@@ -18,7 +18,11 @@ function filtroImagen(req, file, cb) {
   const mimeValido = tiposPermitidos.test(file.mimetype);
 
   if (extensionValida && mimeValido) return cb(null, true);
-  cb(new Error('Solo se permiten imágenes JPG, PNG o WEBP'));
+
+  // status 400: el manejador de errores lo devuelve como error del cliente, no como 500
+  const error = new Error('Solo se permiten imágenes JPG, PNG o WEBP');
+  error.status = 400;
+  cb(error);
 }
 
 const upload = multer({

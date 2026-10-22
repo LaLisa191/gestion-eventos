@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="styles-extra.css">
 <link rel="stylesheet" href="styles-nav.css">
 <link rel="stylesheet" href="styles-footer.css">
+<link rel="stylesheet" href="vendor/bootstrap-icons/bootstrap-icons.min.css">
 </head>
 <body>
 
@@ -48,10 +49,20 @@
       <div class="meta" style="color:var(--text-muted);font-size:14px;margin-top:4px">Déjalo en blanco si no quieres cambiarla. Mínimo 6 caracteres.</div>
 
       <label for="pActual">Contraseña actual</label>
+      <div class="password-field">
       <input id="pActual" type="password" autocomplete="current-password">
+      <button type="button" class="toggle-password" data-target="pActual" aria-label="Mostrar contraseña">
+      <i class="bi bi-eye"></i>
+  </button>
+      </div>
 
       <label for="pNueva">Nueva contraseña</label>
-      <input id="pNueva" type="password" autocomplete="new-password" minlength="6">
+      <div class="password-field">
+      <input id="pNueva" type="password" autocomplete="new-password">
+      <button type="button" class="toggle-password" data-target="pNueva" aria-label="Mostrar contraseña">
+      <i class="bi bi-eye"></i>
+      </button>
+      </div>
 
       <button class="btn-primary" id="btnGuardarPassword" onclick="guardarPassword()">Actualizar contraseña</button>
       <div id="estadoPassword"></div>
@@ -60,6 +71,7 @@
 </div>
 
 <script src="auth.js"></script>
+<script src="nav-activo.js"></script>
 <script>
   const session = getSession();
   
@@ -169,6 +181,8 @@
 
   // Arranca el flujo de validación al cargar el script
   cargarPerfil();
+
+  activarTogglePassword();
 </script>
 <!-- Contenedor inyectado dinámicamente por auth.js -->
 <div id="footer-placeholder"></div>

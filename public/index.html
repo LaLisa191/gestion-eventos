@@ -141,6 +141,7 @@
 </div>
 
 <script src="auth.js"></script>
+<script src="nav-activo.js"></script>
 <script>
   const session = getSession();   // null si no hay sesión iniciada
 
@@ -153,6 +154,7 @@
   let paginaActual = 1;
   const eventosPorPagina = 6;
   let yaPosicionado = false;      // evita re-saltar a #eventos cuando se recargan los eventos
+  let registradosIds = new Set();
 
   function etiquetaModalidad(m) {
     return m === 'virtual' ? 'Virtual' : 'Presencial';
@@ -163,6 +165,17 @@
       ? `<img class="event-image" src="${ev.imageUrl}" alt="${ev.name}">`
       : `<div class="event-image-placeholder"></div>`;
   }
+
+  // Decide qué botón mostrar según el estado del evento
+function botonRegistro(ev) {
+  if (registradosIds.has(ev._id)) {
+    return `<a class="btn-primary" href="register.html?event=${ev._id}" style="justify-content:center">Ya estás registrado</a>`;
+  }
+  if (ev.availableSpots > 0) {
+    return `<a class="btn-primary" href="register.html?event=${ev._id}">Registrarme</a>`;
+  }
+  return `<button class="btn-primary" disabled>Cupo lleno</button>`;
+}
 
   function pintarGrid(events) {
     const grid = document.getElementById('grid');
@@ -197,10 +210,8 @@
             <span>${ev.availableSpots} cupos libres</span>
             <span>${ev.maxCapacity} en total</span>
         </div>
-        ${ev.availableSpots > 0
-            ? `<a class="btn-primary" href="register.html?event=${ev._id}">Registrarme</a>`
-            : `<button class="btn-primary" disabled>Cupo lleno</button>`
-        }
+                ${botonRegistro(ev)}
+}
     </div>
 `).join('');
   }
@@ -302,6 +313,20 @@
     }
   }
 
+async function cargarMisRegistros() {
+  if (!session) return;
+  const res = await fetch('/api/users/me/registrations', {
+    headers: { Authorization: `Bearer ${session.token}` }
+  });
+  if (res.ok) {
+    const registros = await res.json();
+    registradosIds = new Set(
+      registros.filter(r => r.status === 'confirmed' && r.eventId).map(r => r.eventId._id)
+    );
+  }
+}
+
+
   async function cargarFavoritos() {
     if (!session) return;
     const res = await fetch('/api/users/me/favorites', {
@@ -316,6 +341,7 @@
 
   async function cargarEventos() {
     await cargarFavoritos();
+    await cargarMisRegistros();
     const res = await fetch('/api/events');
     const lista = await res.json();
 
@@ -377,9 +403,9 @@
     if (!yaPosicionado) {
       yaPosicionado = true;
       if (location.hash === '#eventos') {
-        requestAnimationFrame(() =>
-          document.getElementById('eventos').scrollIntoView()
-        );
+       requestAnimationFrame(() =>
+       document.getElementById('eventos').scrollIntoView({ behavior: 'instant' })
+);
       }
     }
   }

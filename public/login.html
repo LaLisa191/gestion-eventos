@@ -14,6 +14,8 @@
 <link rel="stylesheet" href="styles-extra.css">
 <link rel="stylesheet" href="styles-nav.css">
 <link rel="stylesheet" href="styles-footer.css">
+<link rel="stylesheet" href="vendor/bootstrap-icons/bootstrap-icons.min.css">
+
 </head>
 <body>
 
@@ -33,7 +35,12 @@
     <input id="email" type="email" placeholder="ana@correo.com">
 
     <label for="password">Contraseña</label>
-    <input id="password" type="password" placeholder="••••••••">
+<div class="password-field">
+  <input id="password" type="password" autocomplete="current-password">
+  <button type="button" class="toggle-password" data-target="password" aria-label="Mostrar contraseña">
+    <i class="bi bi-eye"></i>
+  </button>
+</div>
 
     <button class="btn-primary" onclick="login()">Iniciar sesión</button>
 
@@ -48,6 +55,7 @@
 
 <!-- Carga funciones globales requeridas como setSession y cargarParciales -->
 <script src="auth.js"></script>
+<script src="nav-activo.js"></script>
 <script>
   // Procesa la autenticación manejando credenciales y redirección
   async function login() {
@@ -74,6 +82,9 @@
       document.getElementById('estado').innerHTML = `<div class="state-box error">${data.message}</div>`;
     }
   }
+
+  // Activar botón mostrar/ocultar contraseña
+activarTogglePassword();
 </script>
 
 <!-- Contenedor para el footer inyectado dinámicamente -->
