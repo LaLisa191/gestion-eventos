@@ -3,14 +3,22 @@ const mongoose = require('mongoose');
 const router = express.Router({ mergeParams: true });
 const Event = require('../models/Event');
 const Registration = require('../models/Registration');
-const { verifyToken } = require('../middleware/auth');
+const { verifyToken, isOrganizer } = require('../middleware/auth');
 const { enviarConfirmacionRegistro } = require('../utils/mailer');
 
-router.get('/', verifyToken, async (req, res) => {
+// Solo el organizador del evento puede ver quién se inscribió
+router.get('/', verifyToken, isOrganizer, async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ message: 'Id de evento inválido' });
+    } 
+
+    const event = await Event.findById(req.params.id);
+    if (!event) return res.status(404).json({ message: 'Evento no encontrado' });
+    if (String(event.organizerId) !== String(req.user._id)) {
+      return res.status(403).json({ message: 'No puedes ver los registros de un evento que no organizaste' });
     }
+
     const registrations = await Registration.find({ eventId: req.params.id }).populate('participantId', 'name email');
     res.json(registrations);
   } catch (err) {
@@ -43,13 +51,13 @@ router.post('/', verifyToken, async (req, res) => {
     // RF3: registra al usuario autenticado
     const registration = await Registration.create({ eventId: event._id, participantId: req.user._id });
 
-// RF4 + RNF2: confirmación visual inmediata — no se espera al correo
-res.status(201).json({ message: 'Registro confirmado', registration });
+    // RF4 + RNF2: confirmación visual inmediata — no se espera al correo
+    res.status(201).json({ message: 'Registro confirmado', registration });
 
-// El correo se manda de fondo, sin bloquear la respuesta al usuario
-enviarConfirmacionRegistro(req.user.email, event).catch(err => {
-  console.error('No se pudo enviar el correo de confirmación:', err.message);
-});
+    // El correo se manda de fondo, sin bloquear la respuesta al usuario
+    enviarConfirmacionRegistro(req.user.email, event).catch(err => {
+      console.error('No se pudo enviar el correo de confirmación:', err.message);
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -65,6 +73,34 @@ router.patch('/:registrationId/cancel', verifyToken, async (req, res) => {
     registration.status = 'cancelled';
     await registration.save();
     res.json({ message: 'Registro cancelado', registration });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Elimina del historial una inscripción CANCELADA (solo la del propio usuario)
+router.delete('/:registrationId', verifyToken, async (req, res) => {
+  try {
+    const { id, registrationId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id) || !mongoose.Types.ObjectId.isValid(registrationId)) {
+      return res.status(400).json({ message: 'Id inválido' });
+    }
+
+    const registration = await Registration.findOne({ _id: registrationId, eventId: id });
+    if (!registration) return res.status(404).json({ message: 'Registro no encontrado' });
+
+    if (String(registration.participantId) !== String(req.user._id)) {
+      return res.status(403).json({ message: 'No puedes eliminar un registro que no es tuyo' });
+    }
+
+    // Una inscripción confirmada se cancela primero; así no se pierde un cupo por accidente
+    if (registration.status !== 'cancelled') {
+      return res.status(400).json({ message: 'Solo puedes eliminar inscripciones canceladas' });
+    }
+
+    await registration.deleteOne();
+    res.json({ message: 'Registro eliminado' });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

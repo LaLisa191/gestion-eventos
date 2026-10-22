@@ -1,5 +1,5 @@
 /* ---------- problema vs. solución ---------- */
-.compare-section { padding: 24px 0 88px; }
+.compare-section { padding-block: 24px 88px; }
 
 .compare-grid {
   display: grid;

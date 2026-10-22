@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">40% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>6/15</span>
+                <span class='fraction'>17/17</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/4</span>
+                <span class='fraction'>4/4</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/3</span>
+                <span class='fraction'>3/3</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">42.85% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>6/14</span>
+                <span class='fraction'>16/16</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -92,56 +92,70 @@
 <a name='L27'></a><a href='#L27'>27</a>
 <a name='L28'></a><a href='#L28'>28</a>
 <a name='L29'></a><a href='#L29'>29</a>
-<a name='L30'></a><a href='#L30'>30</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">3x</span>
+<a name='L30'></a><a href='#L30'>30</a>
+<a name='L31'></a><a href='#L31'>31</a>
+<a name='L32'></a><a href='#L32'>32</a>
+<a name='L33'></a><a href='#L33'>33</a>
+<a name='L34'></a><a href='#L34'>34</a>
+<a name='L35'></a><a href='#L35'>35</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">6x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">6x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span></td><td class="text"><pre class="prettyprint lang-js">const multer = require('multer');
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">const multer = require('multer');
 const path = require('node:path');
 const crypto = require('node:crypto');
 &nbsp;
 const storage = multer.diskStorage({
-  destination: <span class="fstat-no" title="function not covered" >(r</span>eq, file, cb) =&gt; {
-<span class="cstat-no" title="statement not covered" >    cb(null, path.join(__dirname, '..', 'public', 'uploads'));</span>
+  destination: (req, file, cb) =&gt; {
+    cb(null, path.join(__dirname, '..', 'public', 'uploads'));
   },
-  filename: <span class="fstat-no" title="function not covered" >(r</span>eq, file, cb) =&gt; {
-    const unico = <span class="cstat-no" title="statement not covered" >Date.now() + '-' + crypto.randomBytes(8).toString('hex');</span>
-<span class="cstat-no" title="statement not covered" >    cb(null, unico + path.extname(file.originalname).toLowerCase());</span>
+  filename: (req, file, cb) =&gt; {
+    const unico = Date.now() + '-' + crypto.randomBytes(8).toString('hex');
+    cb(null, unico + path.extname(file.originalname).toLowerCase());
   }
 });
 &nbsp;
-function <span class="fstat-no" title="function not covered" >filtroImagen(</span>req, file, cb) {
-  const tiposPermitidos = <span class="cstat-no" title="statement not covered" >/jpeg|jpg|png|webp/;</span>
-  const extensionValida = <span class="cstat-no" title="statement not covered" >tiposPermitidos.test(path.extname(file.originalname).toLowerCase());</span>
-  const mimeValido = <span class="cstat-no" title="statement not covered" >tiposPermitidos.test(file.mimetype);</span>
+function filtroImagen(req, file, cb) {
+  const tiposPermitidos = /jpeg|jpg|png|webp/;
+  const extensionValida = tiposPermitidos.test(path.extname(file.originalname).toLowerCase());
+  const mimeValido = tiposPermitidos.test(file.mimetype);
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  if (extensionValida &amp;&amp; mimeValido) <span class="cstat-no" title="statement not covered" >return cb(null, true);</span></span>
-<span class="cstat-no" title="statement not covered" >  cb(new Error('Solo se permiten imágenes JPG, PNG o WEBP'));</span>
+  if (extensionValida &amp;&amp; mimeValido) return cb(null, true);
+&nbsp;
+  // status 400: el manejador de errores lo devuelve como error del cliente, no como 500
+  const error = new Error('Solo se permiten imágenes JPG, PNG o WEBP');
+  error.status = 400;
+  cb(error);
 }
 &nbsp;
 const upload = multer({
@@ -150,14 +164,15 @@ const upload = multer({
   fileFilter: filtroImagen
 });
 &nbsp;
-module.exports = upload;</pre></td></tr></table></pre>
+module.exports = upload;
+&nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
             </div><!-- /wrapper -->
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-09-23T16:51:25.726Z
+                at 2026-10-10T15:46:11.310Z
             </div>
         <script src="../../prettify.js"></script>
         <script>
