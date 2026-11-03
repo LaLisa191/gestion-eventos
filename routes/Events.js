@@ -30,17 +30,18 @@ router.post('/', verifyToken, isOrganizer, upload.single('image'), async (req, r
     if (req.file) {
       eventData.imageUrl = `/uploads/${req.file.filename}`;
     }
-//Validacion de eventos duplicados
-
-    const conflicto = await Event.findOne({
-    date: new Date(eventData.date),
-    location: eventData.location.trim(),
-    status: 'active'
-});
-
-if (conflicto) {
-  return res.status(400).json({ message: 'Ya existe un evento activo programado en ese lugar y a esa misma hora.' });
-}
+// Validación de eventos duplicados. Solo se consulta si llegan lugar y fecha: si faltan,
+    // la validación del modelo responde con un mensaje claro (corrige D-04).
+    if (eventData.location && eventData.date) {
+      const conflicto = await Event.findOne({
+        date: new Date(eventData.date),
+        location: String(eventData.location).trim(),
+        status: 'active'
+      });
+      if (conflicto) {
+        return res.status(400).json({ message: 'Ya existe un evento activo programado en ese lugar y a esa misma hora.' });
+      }
+    }
     const event = await Event.create(eventData);
     res.status(201).json(event);
   } catch (err) {
@@ -57,15 +58,17 @@ router.put('/:id', verifyToken, isOrganizer, upload.single('image'), async (req,
       return res.status(403).json({ message: 'No puedes editar un evento que no organizaste' });
     }
 
-const conflicto = await Event.findOne({
-  _id: { $ne: event._id },
-  date: new Date(req.body.date),
-  location: req.body.location.trim(),
-  status: 'active'
-});
-if (conflicto) {
-  return res.status(400).json({ message: 'Ya existe otro evento activo programado en ese lugar y a esa misma hora.' });
-}
+if (req.body.location && req.body.date) {
+      const conflicto = await Event.findOne({
+        _id: { $ne: event._id },
+        date: new Date(req.body.date),
+        location: String(req.body.location).trim(),
+        status: 'active'
+      });
+      if (conflicto) {
+        return res.status(400).json({ message: 'Ya existe otro evento activo programado en ese lugar y a esa misma hora.' });
+      }
+    }
 
     event.name = req.body.name;
     event.description = req.body.description;
@@ -91,6 +94,8 @@ router.delete('/:id', verifyToken, isOrganizer, async (req, res) => {
     if (String(event.organizerId) !== String(req.user._id)) {
       return res.status(403).json({ message: 'No puedes eliminar un evento que no organizaste' });
     }
+    // Las inscripciones de un evento eliminado no deben quedar huérfanas (corrige D-05)
+    await Registration.deleteMany({ eventId: event._id });
     await event.deleteOne();
     res.json({ message: 'Evento eliminado' });
   } catch (err) {

@@ -5,7 +5,12 @@ const eventSchema = new mongoose.Schema({
   description: { type: String, default: '' },
   date: { type: Date, required: true },
   location: { type: String, required: true },
-  maxCapacity: { type: Number, required: true },
+  maxCapacity: {
+    type: Number,
+    required: true,
+    min: [1, 'El cupo máximo debe ser al menos 1'],
+    validate: { validator: Number.isInteger, message: 'El cupo máximo debe ser un número entero' }
+  },
   modality: { type: String, enum: ['in-person', 'virtual'], default: 'in-person' },
   status: { type: String, enum: ['active', 'cancelled', 'finished'], default: 'active' },
   imageUrl: { type: String, default: '' },
