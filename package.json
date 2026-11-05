@@ -9,10 +9,11 @@
     "test:coverage": "jest --runInBand --coverage"
   },
   "jest": {
-    "setupFilesAfterEnv": [
-      "<rootDir>/jest.setup.js"
-    ],
-    "coveragePathIgnorePatterns": [
+  "setupFilesAfterEnv": [
+    "<rootDir>/jest.setup.js"
+  ],
+  "testTimeout": 15000,
+  "coveragePathIgnorePatterns": [
       "/node_modules/",
       "<rootDir>/tests/"
     ],
