@@ -106,9 +106,14 @@ router.delete('/:id', verifyToken, isOrganizer, async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const events = await Event.find().sort({ _id: -1 });
-    const withCapacity = await Promise.all(events.map(async (event) => {
-      const registered = await Registration.countDocuments({ eventId: event._id, status: 'confirmed' });
-      return { ...event.toObject(), availableSpots: event.maxCapacity - registered };
+    const conteos = await Registration.aggregate([
+      { $match: { status: 'confirmed' } },
+      { $group: { _id: '$eventId', total: { $sum: 1 } } }
+    ]);
+    const inscritosPorEvento = new Map(conteos.map((c) => [String(c._id), c.total]));
+    const withCapacity = events.map((event) => ({
+      ...event.toObject(),
+      availableSpots: event.maxCapacity - (inscritosPorEvento.get(String(event._id)) || 0)
     }));
     res.json(withCapacity);
   } catch (err) {

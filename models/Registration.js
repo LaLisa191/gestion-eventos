@@ -7,4 +7,5 @@ const registrationSchema = new mongoose.Schema({
   status: { type: String, enum: ['confirmed', 'cancelled'], default: 'confirmed' }
 });
 
+registrationSchema.index({ eventId: 1, status: 1 });
 module.exports = mongoose.model('Registration', registrationSchema);
